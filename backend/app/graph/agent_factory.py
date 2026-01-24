@@ -152,14 +152,12 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
                         for tc in msg.tool_calls:
                              tool_name = tc['name']
                              args = tc['args']
-                             arg_str = str(args)
-                             if len(arg_str) > 100: arg_str = arg_str[:100] + "..."
-                             logger.info(f"Tool Call: {tool_name} {arg_str}")
+                             logger.info(f"Tool Call: {tool_name} {args}")
                     
                     if msg.content:
-                         preview = str(msg.content).strip().replace('\n', ' ')
-                         if len(preview) > 200: preview = preview[:200] + "..."
-                         logger.info(f"Thought: {preview}")
+                         # Log full thought without truncation
+                         thought_text = str(msg.content).strip()
+                         logger.info(f"Thought: {thought_text}")
 
             # Step 2: Synthesis with Structured Output (with Retry)
             structured_llm = llm.with_structured_output(schema)

@@ -31,10 +31,19 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     elif weighted_score < -0.3:
         final_signal = "SELL"
     
+    # Calculate weighted confidence from individual agents
+    c_tech = tech.get("confidence", 0.5)
+    c_fund = fund.get("confidence", 0.5)
+    c_sect = sect.get("confidence", 0.5)
+    c_mgmt = mgmt.get("confidence", 0.5)
+    
+    # Same weights as signal: Tech 30%, Fund 40%, Sector 20%, Mgmt 10%
+    overall_confidence = (c_tech * 0.3) + (c_fund * 0.4) + (c_sect * 0.2) + (c_mgmt * 0.1)
+    
     final_report = {
         "ticker": state['ticker'],
         "final_signal": final_signal,
-        "overall_confidence": 0.85, # Mock
+        "overall_confidence": round(overall_confidence, 2),
         "summary": f"Our AI Agents have analyzed {state['ticker']} and recommend a {final_signal}. Technical indicators is {tech.get('signal')}, Fundamental is {fund.get('signal')}.",
         "detailed_breakdown": {
             "technical": tech,
