@@ -50,3 +50,9 @@ def search_governance_issues(query: str):
     """Search for governance issues, scandals, or management track record."""
     search = DuckDuckGoSearchRun()
     return search.run(query)
+
+@tool
+def search_market_trends(query: str):
+    """Search for general market trends, sector performance, and competitor news."""
+    search = DuckDuckGoSearchRun()
+    return search.run(query)

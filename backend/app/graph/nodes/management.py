@@ -1,30 +1,43 @@
 from typing import Dict, Any
 from app.graph.state import AgentState
-from app.graph.tools import search_governance_issues, get_company_news
+from app.graph.tools import get_company_news, search_governance_issues
+from app.graph.agent_factory import create_agent, run_agent_and_log
 import json
 
+MANAGEMENT_SYSTEM_PROMPT = """You are a Corporate Governance Expert.
+Your job is to investigate the leadership, management stability, and reputation of the company.
+
+1. Use `get_company_news` to see recent headlines.
+2. Use `search_governance_issues` to find scandals, fraud, or executive turnover.
+3. Synthesize the information to gauge management quality.
+
+Return a JSON object with:
+- signal: "BUY" (Stable/Visionary), "SELL" (Scandal/Incompetent), or "HOLD" (Neutral)
+- confidence: float
+- summary: "Brief overview of leadership status"
+- risks: ["List of specific governance risks found"]
+- reasoning: "Deep dive into why you assigned this rating, citing specific news items."
+
+IMPORTANT: Return ONLY the JSON object.
+"""
+
+management_agent = create_agent([get_company_news, search_governance_issues], MANAGEMENT_SYSTEM_PROMPT)
+
 async def management_analysis_node(state: AgentState) -> Dict[str, Any]:
-    print(f"Running Management Analysis for {state['ticker']}")
     ticker = state['ticker']
+    result = await run_agent_and_log(management_agent, ticker, "Management Analyst")
     
-    # 1. Fetch News
-    news_json = get_company_news.run(ticker)
-    
-    # 2. Search for specialized governance info
-    governance_query = f"{ticker} management scandal fraud governance issues"
-    # duck_results = search_governance_issues.run(governance_query) # Commented out to avoid real network call delays in initial build if not needed yet.
-    # In MVP, we might skip the heavy search or mock it if network is flaky.
-    # Let's assume we call it.
-    
-    # Mocking the AI synthesis of these text results
-    
-    analysis = {
-        "signal": "NEUTRAL",
-        "confidence": 0.6,
-        "summary": "Management has completely revamped the board.",
-        "risks": ["CEO turnover in last 2 years"],
-        "reasoning": "While new leadership is promising, stability is yet to be proven."
-    }
-    
-    log = f"Management Analysis for {ticker}: News analyzed, Governance checked. Signal=NEUTRAL"
-    return {"management_analysis": analysis, "logs": [log]}
+    try:
+        clean_json = result["output"].replace("```json", "").replace("```", "").strip()
+        analysis = json.loads(clean_json)
+    except Exception as e:
+        result["logs"].append(f"Management Analyst: Error parsing JSON - {e}")
+        analysis = {
+            "signal": "HOLD",
+            "confidence": 0.0,
+            "summary": "Error parsing output",
+            "risks": [],
+            "reasoning": f"Failed to parse. Raw: {result['output'][:100]}..."
+        }
+        
+    return {"management_analysis": analysis, "logs": result["logs"]}
