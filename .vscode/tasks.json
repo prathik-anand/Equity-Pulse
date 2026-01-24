@@ -1,0 +1,41 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Kill Apps",
+            "type": "shell",
+            "command": "kill -9 $(lsof -t -i:8000) 2>/dev/null; kill -9 $(lsof -t -i:5173) 2>/dev/null; pkill -f 'uvicorn app.main:app' 2>/dev/null || true",
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared",
+                "close": true
+            }
+        },
+        {
+            "label": "Start Frontend",
+            "type": "shell",
+            "command": "npm run dev",
+            "options": {
+                "cwd": "${workspaceFolder}/frontend"
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "custom",
+                "pattern": {
+                    "regexp": "^$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".*VITE.*",
+                    "endsPattern": ".*Local:.*"
+                }
+            },
+            "presentation": {
+                "group": "groupA",
+                "reveal": "always",
+                "panel": "dedicated"
+            },
+            "dependsOn": "Kill Apps"
+        }
+    ]
+}

@@ -14,7 +14,7 @@ if "GOOGLE_API_KEY" not in os.environ:
     print("WARNING: GOOGLE_API_KEY not found in environment.")
 
 try:
-    llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-3-pro-preview", temperature=0)
 except Exception as e:
     print(f"Error initializing LLM: {e}")
     # Fallback to avoid crash on import if key is missing

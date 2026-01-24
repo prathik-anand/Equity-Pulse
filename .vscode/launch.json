@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Full Stack (Kill & Start)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "app.main",
+            "args": [],
+            "cwd": "${workspaceFolder}/backend",
+            "python": "${workspaceFolder}/backend/.venv/bin/python",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}/backend"
+            },
+            "preLaunchTask": "Start Frontend",
+            "console": "integratedTerminal",
+            "justMyCode": false
+        }
+    ]
+}

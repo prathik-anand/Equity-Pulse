@@ -191,20 +191,20 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                         <div className="space-y-6">
                             <div>
-                                <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-2">Reasoning</h4>
-                                <p className="bg-secondary/20 p-4 rounded-lg text-sm leading-relaxed">
+                                <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Reasoning</h4>
+                                <p className="bg-secondary/20 p-4 rounded-lg text-lg leading-relaxed">
                                     {details[activeTab].reasoning || details[activeTab].summary || "No detailed reasoning provided."}
                                 </p>
                             </div>
 
                             {details[activeTab].metrics && (
                                 <div>
-                                    <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">Key Metrics</h4>
+                                    <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-3">Key Metrics</h4>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {Object.entries(details[activeTab].metrics).map(([key, value]) => (
-                                            <div key={key} className="p-3 bg-secondary/10 rounded-lg border border-border/30">
-                                                <div className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</div>
-                                                <div className="font-mono text-sm font-medium mt-1">{String(value)}</div>
+                                            <div key={key} className="p-4 bg-secondary/10 rounded-lg border border-border/30">
+                                                <div className="text-base text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</div>
+                                                <div className="font-mono text-xl font-medium mt-1">{String(value)}</div>
                                             </div>
                                         ))}
                                     </div>

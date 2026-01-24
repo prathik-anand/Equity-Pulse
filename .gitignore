@@ -1,5 +1,4 @@
 # IDEs
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -19,7 +18,20 @@ __pycache__/
 .venv/
 env/
 venv/
-*.env
+.env
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite3
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
 
 # Local Artifacts
 artifacts/
