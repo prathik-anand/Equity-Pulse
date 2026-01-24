@@ -1,43 +1,41 @@
 from typing import Dict, Any
 from app.graph.state import AgentState
 from app.graph.tools import get_company_news, search_governance_issues
-from app.graph.agent_factory import create_agent, run_agent_and_log
-import json
+from app.graph.agent_factory import create_structured_node
+from app.graph.schemas.analysis import ManagementAnalysis
 
 MANAGEMENT_SYSTEM_PROMPT = """You are a Corporate Governance Expert.
-Your job is to investigate the leadership, management stability, and reputation of the company.
+Your goal is to evaluate the leadership quality and governance risks.
 
-1. Use `get_company_news` to see recent headlines.
-2. Use `search_governance_issues` to find scandals, fraud, or executive turnover.
-3. Synthesize the information to gauge management quality.
+PROCESS:
+1.  **News Scan**: Use `get_company_news` for recent executive changes.
+2.  **Risk Check**: Use `search_governance_issues` to screen for fraud, lawsuits, or scandals.
+3.  **Evaluate**: Are leaders aligned with shareholders? Is there a history of poor capital allocation?
+4.  **Synthesize**: Generate the final structured report.
 
-Return a JSON object with:
-- signal: "BUY" (Stable/Visionary), "SELL" (Scandal/Incompetent), or "HOLD" (Neutral)
-- confidence: float
-- summary: "Brief overview of leadership status"
-- risks: ["List of specific governance risks found"]
-- reasoning: "Deep dive into why you assigned this rating, citing specific news items."
-
-IMPORTANT: Return ONLY the JSON object.
+CONSTRAINTS:
+- **CRITICAL**: Do NOT hallucinate scandals. Only report issues found by the tools.
+- If no data confirms a risk, state "No significant governance risks detected."
 """
 
-management_agent = create_agent([get_company_news, search_governance_issues], MANAGEMENT_SYSTEM_PROMPT)
+run_management_agent = create_structured_node(
+    tools=[get_company_news, search_governance_issues],
+    system_prompt=MANAGEMENT_SYSTEM_PROMPT,
+    schema=ManagementAnalysis
+)
 
 async def management_analysis_node(state: AgentState) -> Dict[str, Any]:
     ticker = state['ticker']
-    result = await run_agent_and_log(management_agent, ticker, "Management Analyst")
+    result = await run_management_agent(ticker, "Management Analyst")
     
-    try:
-        clean_json = result["output"].replace("```json", "").replace("```", "").strip()
-        analysis = json.loads(clean_json)
-    except Exception as e:
-        result["logs"].append(f"Management Analyst: Error parsing JSON - {e}")
-        analysis = {
+    analysis = result["output"]
+    if not analysis:
+         analysis = {
             "signal": "HOLD",
             "confidence": 0.0,
-            "summary": "Error parsing output",
+            "summary": "Error generating structured output",
             "risks": [],
-            "reasoning": f"Failed to parse. Raw: {result['output'][:100]}..."
+            "reasoning": "Failed to generate structured analysis."
         }
         
     return {"management_analysis": analysis, "logs": result["logs"]}

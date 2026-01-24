@@ -104,3 +104,80 @@ def create_agent(tools: List[Any], system_prompt: str):
     Factory to create a ReAct agent properly configured.
     """
     return create_react_agent(llm, tools, prompt=system_prompt)
+
+def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
+    # ... imports ...
+    from langgraph.prebuilt import create_react_agent
+    from langchain_core.prompts import ChatPromptTemplate
+    from app.graph.logger import AgentLogger
+    import asyncio
+    
+    # 1. Create the base ReAct agent for tool usage
+    research_agent = create_react_agent(llm, tools, prompt=system_prompt)
+    
+    async def retry_with_backoff(coro_func, *args, max_retries=3, **kwargs):
+        for i in range(max_retries):
+            try:
+                return await coro_func(*args, **kwargs)
+            except Exception as e:
+                if "503" in str(e) or "overloaded" in str(e).lower():
+                    wait_time = (2 ** i) * 1  # 1s, 2s, 4s
+                    print(f"Warning: Model overloaded (503). Retrying in {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                else:
+                    raise e
+        raise Exception("Max retries exceeded for model call.")
+
+    async def run_structured_agent(ticker: str, agent_name: str) -> Dict[str, Any]:
+        """
+        Custom runner using AgentLogger with Retries.
+        """
+        logger = AgentLogger(agent_name)
+        logger.info(f"Starting analysis for {ticker}")
+        
+        # Proper State Initialization for ReAct Agent
+        # LangGraph ReAct expects 'messages' in the state.
+        inputs = {"messages": [HumanMessage(content=f"Analyze {ticker}. Gather all necessary data using tools.")]}
+        
+        try:
+            # Step 1: Run Reasoning Loop (with Retry)
+            # We wrap the invoke in a retry block for 503s
+            result = await retry_with_backoff(research_agent.ainvoke, inputs)
+            messages = result["messages"]
+            
+            # Log the journey
+            for msg in messages:
+                if isinstance(msg, AIMessage):
+                    if hasattr(msg, 'tool_calls') and msg.tool_calls:
+                        for tc in msg.tool_calls:
+                             tool_name = tc['name']
+                             args = tc['args']
+                             arg_str = str(args)
+                             if len(arg_str) > 100: arg_str = arg_str[:100] + "..."
+                             logger.info(f"Tool Call: {tool_name} {arg_str}")
+                    
+                    if msg.content:
+                         preview = str(msg.content).strip().replace('\n', ' ')
+                         if len(preview) > 200: preview = preview[:200] + "..."
+                         logger.info(f"Thought: {preview}")
+
+            # Step 2: Synthesis with Structured Output (with Retry)
+            structured_llm = llm.with_structured_output(schema)
+            final_prompt = messages + [HumanMessage(content="Based on the above research, generate the final structured report.")]
+            
+            logger.info("Generating final structured report...")
+            analysis_object = await retry_with_backoff(structured_llm.ainvoke, final_prompt)
+            
+            final_output = analysis_object.model_dump()
+            logger.info("Analysis generated successfully.")
+            
+        except Exception as e:
+            logger.error("Analysis failed", exc=e)
+            final_output = None
+            
+        return {
+            "output": final_output,
+            "logs": logger.get_logs()
+        }
+        
+    return run_structured_agent
