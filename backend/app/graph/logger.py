@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import IntEnum
+import logging
 
 class LogLevel(IntEnum):
     DEBUG = 10
@@ -12,11 +13,18 @@ class AgentLogger:
         self.agent_name = agent_name
         self.level = level
         self.logs = []
+        # Get standard python logger
+        self.sys_logger = logging.getLogger(f"agent.{agent_name}")
 
     def _log(self, level_name: str, level_val: int, message: str):
+        # 1. Capture for Frontend
         if level_val >= self.level:
             timestamp = datetime.now().strftime("%H:%M:%S")
             self.logs.append(f"[{timestamp}] [{self.agent_name}] {level_name}: {message}")
+            
+        # 2. Emit to System/Console (Standard Logging)
+        # Map our IntEnum to standard logging levels (they match mostly: DEBUG=10, INFO=20, WARN=30, ERROR=40)
+        self.sys_logger.log(level_val, message) 
 
     def debug(self, message: str):
         self._log("DEBUG", LogLevel.DEBUG, message)
