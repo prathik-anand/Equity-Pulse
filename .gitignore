@@ -1,0 +1,25 @@
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Global Node
+node_modules/
+npm-debug.log
+
+# Global Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+*.env
+
+# Local Artifacts
+artifacts/
