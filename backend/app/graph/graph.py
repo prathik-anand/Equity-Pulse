@@ -20,16 +20,11 @@ workflow.add_node("aggregator", aggregator_node)
 # Set Entry Point
 workflow.set_entry_point("orchestrator")
 
-# Define Edges: Orchestrator fan-out to all analysis nodes
+# Define Edges: Sequential execution for cleaner logging
 workflow.add_edge("orchestrator", "technical")
-workflow.add_edge("orchestrator", "fundamental")
-workflow.add_edge("orchestrator", "sector")
-workflow.add_edge("orchestrator", "management")
-
-# Fan-in: All analysis nodes go to aggregator
-workflow.add_edge("technical", "aggregator")
-workflow.add_edge("fundamental", "aggregator")
-workflow.add_edge("sector", "aggregator")
+workflow.add_edge("technical", "fundamental")
+workflow.add_edge("fundamental", "sector")
+workflow.add_edge("sector", "management")
 workflow.add_edge("management", "aggregator")
 
 # End

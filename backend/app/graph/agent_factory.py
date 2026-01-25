@@ -14,7 +14,7 @@ if "GOOGLE_API_KEY" not in os.environ:
     print("WARNING: GOOGLE_API_KEY not found in environment.")
 
 try:
-    llm = ChatGoogleGenerativeAI(model="gemini-3-pro-preview", temperature=0)
+    llm = ChatGoogleGenerativeAI(model="gemini-3-flash-preview", temperature=0)
 except Exception as e:
     print(f"Error initializing LLM: {e}")
     # Fallback to avoid crash on import if key is missing
@@ -172,11 +172,43 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
                         pass
                 
                 elif kind == "on_chat_model_end":
+                    import ast
                     # A model call finished. It might be a thought or a tool call request.
                     output = event['data'].get('output')
                     if output and isinstance(output, AIMessage):
-                        if output.content:
-                             logger.info(f"Thought: {str(output.content).strip()}")
+                        text = output.content
+                        if text:
+                            # Handle multimodal content list
+                            if isinstance(text, list):
+                                parts = []
+                                for part in text:
+                                    if isinstance(part, dict) and "text" in part:
+                                        parts.append(part["text"])
+                                    elif isinstance(part, str):
+                                        parts.append(part)
+                                text = "".join(parts)
+                            else:
+                                text = str(text)
+
+                            # Clean JSON artifacts
+                            msg_str = text.strip()
+                            if (msg_str.startswith("[") and ("type" in msg_str or "text" in msg_str)) or msg_str.startswith("{"):
+                                try:
+                                    data = ast.literal_eval(msg_str)
+                                    if isinstance(data, list):
+                                        text = "".join([d.get("text", "") for d in data if isinstance(d, dict) and "text" in d])
+                                    elif isinstance(data, dict):
+                                        text = data.get("text", "")
+                                except:
+                                    pass
+
+                            clean_text = text.strip()
+                            if clean_text:
+                                # Hueristic: If it's a very long final report (markdown), hide it from scratchpad
+                                if len(clean_text) > 500 or "###" in clean_text:
+                                    logger.info("Insight: Synthesizing gathered data into report...")
+                                else:
+                                    logger.info(f"Insight: {clean_text}")
 
             # After streaming is done, we need the final state to get the full history for synthesis
             # Since astream_events doesn't easily return the final state, we might need to rely on
@@ -287,21 +319,28 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
                                         text_parts.append(part)
                                 text = "".join(text_parts)
 
-                        # Clean up if it looks like the JSON list string (e.g. from Gemini)
-                        # We use a broad check for list-like strings
-                        stripped = text.strip()
-                        if stripped.startswith("[") and ("type" in stripped or "text" in stripped):
+                        # Deep Clean: Remove generic JSON artifacts if the model output them literally
+                        # Some models output `[{'type': 'text', 'text': '...'}]` as the string content
+                        msg_str = text.strip()
+                        if (msg_str.startswith("[") and ("type" in msg_str or "text" in msg_str)) or msg_str.startswith("{"):
                             try:
-                                data = ast.literal_eval(stripped)
+                                data = ast.literal_eval(msg_str)
                                 if isinstance(data, list):
-                                    text = "".join([d.get("text", "") for d in data if "text" in d])
+                                    text = "".join([d.get("text", "") for d in data if isinstance(d, dict) and "text" in d])
+                                elif isinstance(data, dict):
+                                    text = data.get("text", "")
                             except:
+                                # If parsing fails, it's likely broken JSON.
                                 pass
 
-                        if text:
-                            clean_text = text.strip()
-                            if clean_text:
-                                self.logger.info(f"Thought: {clean_text}")
+                        clean_text = text.strip()
+                        if clean_text:
+                            # Hueristic: If it's a very long final report (markdown), hide it from scratchpad
+                            # The user can see the final report in the main UI
+                            if len(clean_text) > 500 or "###" in clean_text:
+                                self.logger.info("Insight: Synthesizing gathered data into report...")
+                            else:
+                                self.logger.info(f"Insight: {clean_text}")
                             
             stream_handler = StreamLoggingHandler(logger)
             
