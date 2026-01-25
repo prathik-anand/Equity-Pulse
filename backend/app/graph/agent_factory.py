@@ -213,7 +213,7 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
 
             # Step 2: Synthesis with Structured Output
             structured_llm = llm.with_structured_output(schema)
-            final_prompt = messages + [HumanMessage(content="Based on the above research, generate the final structured report.")]
+            final_prompt = messages + [HumanMessage(content="Based on the above research, generate the final structured report. You MUST use the structured output format. Do not just reply with text.")]
             
             logger.info(f"[{agent_name}] -> Generating final structured report...")
             analysis_object = await retry_with_backoff(structured_llm.ainvoke, final_prompt)
