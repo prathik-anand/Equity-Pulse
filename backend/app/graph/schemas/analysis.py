@@ -42,3 +42,12 @@ class ManagementAnalysis(BaseModel):
     summary: str = Field(..., description="Executive summary of leadership capability")
     risks: List[str] = Field(default_factory=list, description="List of specific governance risks or scandals if any")
     reasoning: str = Field(..., description="Deep dive into management quality and track record")
+
+class PortfolioManagerOutput(BaseModel):
+    """Output schema for the Aggregator (CIO) Agent."""
+    final_signal: Literal["BUY", "SELL", "HOLD"] = Field(description="The final Buy/Sell/Hold decision")
+    confidence_score: float = Field(description="0-100% confidence in the decision")
+    executive_summary: str = Field(description="High-level summary (2-3 sentences) for the dashboard header")
+    investment_thesis: str = Field(description="The 'Bull Case': key reasons to own this stock")
+    bear_case_risks: str = Field(description="The 'Bear Case': key risks and reasons to sell")
+    strategy_recommendation: str = Field(description="Actionable advice (e.g. 'Buy on dips to $200', 'Wait for earnings')")
