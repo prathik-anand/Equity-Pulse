@@ -8,6 +8,7 @@ class AgentState(TypedDict):
     logs: Annotated[List[str], operator.add]
     
     # Sub-agent outputs
+    quant_analysis: Dict[str, Any]
     technical_analysis: Dict[str, Any]
     fundamental_analysis: Dict[str, Any]
     sector_analysis: Dict[str, Any]

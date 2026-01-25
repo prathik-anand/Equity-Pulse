@@ -13,7 +13,6 @@ from app.graph.schemas.analysis import (
     ManagementAnalysis,
 )
 from app.graph.schemas.tool_inputs import (
-    StockPriceInput,
     FinancialsInput,
     CompanyNewsInput,
     GovernanceSearchInput,
@@ -34,7 +33,6 @@ __all__ = [
     "SectorAnalysis",
     "ManagementAnalysis",
     # Tool inputs
-    "StockPriceInput",
     "FinancialsInput",
     "CompanyNewsInput",
     "GovernanceSearchInput",

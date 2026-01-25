@@ -6,6 +6,7 @@ from app.graph.nodes.fundamental import fundamental_analysis_node
 from app.graph.nodes.sector import sector_analysis_node
 from app.graph.nodes.management import management_analysis_node
 from app.graph.nodes.aggregator import aggregator_node
+from app.graph.nodes.quant import quant_analysis_node
 
 workflow = StateGraph(AgentState)
 
@@ -16,12 +17,14 @@ workflow.add_node("fundamental", fundamental_analysis_node)
 workflow.add_node("sector", sector_analysis_node)
 workflow.add_node("management", management_analysis_node)
 workflow.add_node("aggregator", aggregator_node)
+workflow.add_node("quant", quant_analysis_node)
 
 # Set Entry Point
 workflow.set_entry_point("orchestrator")
 
 # Define Edges: Sequential execution for cleaner logging
-workflow.add_edge("orchestrator", "technical")
+workflow.add_edge("orchestrator", "quant")
+workflow.add_edge("quant", "technical")
 workflow.add_edge("technical", "fundamental")
 workflow.add_edge("fundamental", "sector")
 workflow.add_edge("sector", "management")

@@ -5,13 +5,6 @@ These schemas tell the LLM exactly what parameters each tool expects.
 from pydantic import BaseModel, Field
 
 
-class StockPriceInput(BaseModel):
-    """Input schema for get_stock_price tool."""
-    ticker: str = Field(
-        description="Stock ticker symbol (e.g., 'AAPL' for Apple, 'TSLA' for Tesla, 'MSFT' for Microsoft)"
-    )
-
-
 class FinancialsInput(BaseModel):
     """Input schema for get_financials tool."""
     ticker: str = Field(

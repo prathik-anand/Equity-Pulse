@@ -1,25 +1,24 @@
 from typing import Dict, Any
 from app.graph.state import AgentState
-from app.graph.tools import search_market_trends, get_stock_price
+from app.graph.tools import search_market_trends, get_price_action
 from app.graph.agent_factory import create_structured_node
 from app.graph.schemas.analysis import SectorAnalysis
 
-SECTOR_SYSTEM_PROMPT = """You are a Wall Street Sector Strategist.
-Your goal is to evaluate the sector validity and competitive landscape for the given ticker.
+SECTOR_SYSTEM_PROMPT = """You are a Sector Analyst.
+Your goal is to evaluate the industry landscape, competitive position, and sector trends.
 
-PROCESS:
-1.  **Identify Sector**: Use `get_stock_price` to confirm the sector.
-2.  **Analyze Trends**: Use `search_market_trends` to find MACRO trends (e.g., interest rates, regulations, AI adoption) affecting this specific sector.
-3.  **Peer Comparison**: Identify top 3 competitors and assess relative strength.
-4.  **Synthesize**: Generate the final structured report.
+1.  **Identify Sector**: Use `get_price_action` to confirm the sector and industry classification.
+2.  **Analyze Trends**: Use `search_market_trends` to find:
+    - Sector tailwinds/headwinds (e.g. "EV demand slowing", "AI boom").
+    - Regulatory changes.
+    - Market share shifts.
+3.  **Synthesize**: Determine if the sector environment is Favorable, Neutral, or Challenging.
 
-CONSTRAINTS:
-- Cite specific trends (e.g., "CHIPS Act benefits", "Oil price volatility").
-- If search fails, base general known knowledge but valid confidence accordingly.
+Output concise analysis.
 """
 
 run_sector_agent = create_structured_node(
-    tools=[get_stock_price, search_market_trends],
+    tools=[get_price_action, search_market_trends],
     system_prompt=SECTOR_SYSTEM_PROMPT,
     schema=SectorAnalysis
 )
