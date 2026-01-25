@@ -49,8 +49,9 @@ run_technical_agent = create_structured_node(
 async def technical_analysis_node(state: AgentState) -> Dict[str, Any]:
     ticker = state['ticker']
     
+    session_id = state.get("session_id")
     # Run the structured agent
-    result = await run_technical_agent(ticker, "Technical Analyst")
+    result = await run_technical_agent(ticker, "Technical Analyst", session_id=session_id)
     
     analysis = result["output"]
     logs = result["logs"]

@@ -1,6 +1,8 @@
 from datetime import datetime
 from enum import IntEnum
 import logging
+import asyncio
+from app.core.log_stream import stream_manager
 
 class LogLevel(IntEnum):
     DEBUG = 10
@@ -9,18 +11,40 @@ class LogLevel(IntEnum):
     ERROR = 40
 
 class AgentLogger:
-    def __init__(self, agent_name: str, level: int = LogLevel.INFO):
+    def __init__(self, agent_name: str, level: int = LogLevel.INFO, session_id: str = None):
         self.agent_name = agent_name
         self.level = level
+        self.session_id = session_id
         self.logs = []
         # Get standard python logger
         self.sys_logger = logging.getLogger(f"agent.{agent_name}")
+        
+        # Capture the running loop for thread-safe broadcasting later
+        try:
+            self.loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self.loop = None
 
     def _log(self, level_name: str, level_val: int, message: str):
         # 1. Capture for Frontend
         if level_val >= self.level:
             timestamp = datetime.now().strftime("%H:%M:%S")
-            self.logs.append(f"[{timestamp}] [{self.agent_name}] {level_name}: {message}")
+            log_entry = f"[{timestamp}] [{self.agent_name}] {level_name}: {message}"
+            self.logs.append(log_entry)
+            
+            # Stream if session_id is available
+            if self.session_id and self.loop:
+                coro = stream_manager.broadcast(self.session_id, log_entry)
+                try:
+                    # Check if we are in the same loop
+                    curr_loop = asyncio.get_running_loop()
+                    if curr_loop is self.loop:
+                        self.loop.create_task(coro)
+                    else:
+                        asyncio.run_coroutine_threadsafe(coro, self.loop)
+                except RuntimeError:
+                    # No running loop in this thread, use the captured main loop
+                    asyncio.run_coroutine_threadsafe(coro, self.loop)
             
         # 2. Emit to System/Console (Standard Logging)
         # Map our IntEnum to standard logging levels (they match mostly: DEBUG=10, INFO=20, WARN=30, ERROR=40)

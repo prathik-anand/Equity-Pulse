@@ -5,8 +5,13 @@
             "name": "Full Stack (Kill & Start)",
             "type": "debugpy",
             "request": "launch",
-            "module": "app.main",
-            "args": [],
+            "module": "uvicorn",
+            "args": [
+                "app.main:app",
+                "--host",
+                "127.0.0.1",
+                "--reload"
+            ],
             "cwd": "${workspaceFolder}/backend",
             "python": "${workspaceFolder}/backend/.venv/bin/python",
             "env": {

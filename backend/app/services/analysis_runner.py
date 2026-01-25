@@ -3,7 +3,10 @@ from sqlalchemy import select
 from app.models.report import AnalysisSession
 from app.graph.graph import app as graph_app
 from app.core.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal
 import json
+from app.core.log_stream import stream_manager
+import asyncio
 
 async def run_analysis_workflow(session_id: str, ticker: str):
     print(f"Starting Background Analysis for {ticker} (Session: {session_id})")
@@ -40,6 +43,9 @@ async def run_analysis_workflow(session_id: str, ticker: str):
                 session_obj.summary = final_state.get("final_report", {}).get("summary", "")
                 session_obj.logs = final_state.get("logs", [])
                 await db.commit()
+                await db.commit()
+                # Notify stream of completion
+                await stream_manager.broadcast(session_id, "STATUS: COMPLETED")
                 print(f"Analysis completed for {ticker}")
                 
         except Exception as e:

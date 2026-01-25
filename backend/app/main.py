@@ -5,6 +5,17 @@ from app.api.endpoints import analysis, tickers
 
 settings = get_settings()
 
+import logging.config
+import os
+
+# Setup logging programmatically (User Request)
+log_config_path = os.path.join(os.path.dirname(__file__), "..", "logging.conf")
+if os.path.exists(log_config_path):
+    logging.config.fileConfig(log_config_path, disable_existing_loggers=False)
+else:
+    # Fallback or just print if config is missing in dev
+    print("Warning: logging.conf not found.")
+
 app = FastAPI(
     title=settings.PROJECT_NAME,
     openapi_url=f"{settings.API_V1_STR}/openapi.json"

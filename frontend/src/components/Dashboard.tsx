@@ -3,6 +3,7 @@ import { getAnalysisResult } from '../api';
 import { motion } from 'framer-motion';
 import { Activity, BarChart3, TrendingUp, Users, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
 import clsx from 'clsx';
+import LogViewer from './LogViewer';
 
 interface DashboardProps {
     sessionId: string;
@@ -32,27 +33,26 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
         };
 
         fetchData();
-        interval = setInterval(fetchData, 2000); // Poll every 2s
+        interval = setInterval(fetchData, 15000); // Poll every 15s
 
         return () => clearInterval(interval);
     }, [sessionId]);
 
     if (!data || status === 'processing') {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-                <div className="relative w-16 h-16">
-                    <div className="absolute inset-0 border-4 border-muted rounded-full"></div>
-                    <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                </div>
-                <div>
-                    <p className="text-muted-foreground animate-pulse text-center mb-4">Running Multi-Agent Analysis...</p>
-                    {/* Live Logs View */}
-                    <div className="w-full max-w-md h-48 bg-black/50 rounded-lg p-4 font-mono text-xs text-green-400 overflow-y-auto border border-white/10 shadow-inner">
-                        {data?.report?.logs?.map((log: string, i: number) => (
-                            <div key={i} className="mb-1 opacity-80">&gt; {log}</div>
-                        ))}
-                        <div className="animate-pulse">&gt; ...</div>
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 w-full max-w-4xl mx-auto">
+                <div className="text-center space-y-4">
+                    <div className="relative w-16 h-16 mx-auto">
+                        <div className="absolute inset-0 border-4 border-muted rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
+                    <p className="text-xl font-medium animate-pulse">Running Multi-Agent Analysis...</p>
+                    <p className="text-muted-foreground text-sm">Please wait while our AI analysts research and synthesize data.</p>
+                </div>
+
+                {/* Live Scratchpad */}
+                <div className="w-full">
+                    <LogViewer sessionId={sessionId} isProcessing={true} />
                 </div>
             </div>
         );
@@ -141,18 +141,8 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
             {/* Content */}
             <div className="min-h-[400px]">
                 {activeTab === 'logs' && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="p-6 rounded-xl bg-black/80 border border-white/10 font-mono text-sm text-green-400/90 shadow-inner">
-                        <h3 className="text-white font-sans text-lg font-semibold mb-4 flex items-center gap-2">
-                            System Logs
-                        </h3>
-                        <div className="space-y-1">
-                            {logs.map((log: string, i: number) => (
-                                <div key={i} className="border-b border-white/5 pb-1 last:border-0 border-dashed">
-                                    <span className="text-white/30 mr-2">[{i + 1}]</span>
-                                    {log}
-                                </div>
-                            ))}
-                        </div>
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+                        <LogViewer sessionId={sessionId} initialLogs={logs} isProcessing={false} />
                     </motion.div>
                 )}
 

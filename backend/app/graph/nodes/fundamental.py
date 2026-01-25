@@ -51,7 +51,8 @@ run_fundamental_agent = create_structured_node(
 
 async def fundamental_analysis_node(state: AgentState) -> Dict[str, Any]:
     ticker = state['ticker']
-    result = await run_fundamental_agent(ticker, "Fundamental Analyst")
+    session_id = state.get("session_id")
+    result = await run_fundamental_agent(ticker, "Fundamental Analyst", session_id=session_id)
     
     analysis = result["output"]
     if not analysis:

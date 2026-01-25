@@ -5,6 +5,8 @@ from app.models.report import AnalysisSession
 from app.services.analysis_runner import run_analysis_workflow
 from sqlalchemy import select
 from uuid import UUID
+from fastapi.responses import StreamingResponse
+from app.core.log_stream import stream_manager
 
 router = APIRouter()
 
@@ -57,5 +59,16 @@ async def get_analysis_result(session_id: UUID, db: SessionDep):
         "status": session.status,
         "created_at": session.created_at,
         "summary": session.summary,
-        "report": session.report_data
+        "report": session.report_data,
+        "logs": session.logs
     }
+
+@router.get("/analysis/{session_id}/stream")
+async def stream_analysis_logs(session_id: str):
+    """
+    Stream logs for a specific analysis session using Server-Sent Events (SSE).
+    """
+    return StreamingResponse(
+        stream_manager.get_stream(session_id),
+        media_type="text/event-stream"
+    )
