@@ -45,7 +45,7 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     print(f"Aggregating results for {ticker}")
     
     # Contextualize inputs for the CIO
-    quant = state.get("quant_data", {})
+    quant = state.get("quant_analysis", {})
     tech = state.get("technical_analysis", {})
     fund = state.get("fundamental_analysis", {})
     sect = state.get("sector_analysis", {})
