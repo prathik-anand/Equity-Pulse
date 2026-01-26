@@ -46,7 +46,7 @@ class ManagementAnalysis(BaseModel):
 class PortfolioManagerOutput(BaseModel):
     """Output schema for the Aggregator (CIO) Agent."""
     final_signal: Literal["BUY", "SELL", "HOLD"] = Field(description="The final Buy/Sell/Hold decision")
-    confidence_score: float = Field(description="0-100% confidence in the decision")
+    confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0 (e.g., 0.85 for 85%). Do NOT use 0-100 scale.")
     executive_summary: str = Field(description="High-level summary (2-3 sentences) for the dashboard header")
     investment_thesis: str = Field(description="The 'Bull Case': key reasons to own this stock")
     bear_case_risks: str = Field(description="The 'Bear Case': key risks and reasons to sell")

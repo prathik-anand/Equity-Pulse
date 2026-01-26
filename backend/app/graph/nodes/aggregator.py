@@ -24,7 +24,7 @@ You must synthesize reports from 6 different analysts, including a "Risk Manager
    - If Technicals say SELL but Fundamentals say BUY, who is right in this context? (e.g. "Fundamentals look good but waiting for technical entry").
 3. **The Verdict**:
    - Assign a Signal (BUY/SELL/HOLD).
-   - Assign Confidence (0-100%).
+   - Assign Confidence (0.0 to 1.0). Do NOT use percentages.
 4. **Final Memo**:
    - Write a clear, executive-level summary.
 
