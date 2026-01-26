@@ -91,6 +91,8 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
         { id: 'fundamental', label: 'Fundamental', icon: BarChart3 },
         { id: 'sector', label: 'Sector', icon: TrendingUp },
         { id: 'management', label: 'Management', icon: Users },
+        { id: 'quant', label: 'Quant', icon: BarChart3 },
+        { id: 'risk', label: 'Risk', icon: AlertCircle },
         { id: 'logs', label: 'Agent Logs', icon: FileText },
     ];
 
@@ -157,7 +159,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Quick stats mini-cards can go here */}
+                            {/* Quick stats mini-cards */}
                             <div className="p-4 rounded-xl bg-secondary/20 border border-border/50">
                                 <div className="text-sm text-muted-foreground">Technical Signal</div>
                                 <div className={clsx("font-semibold", getSignalColor(details?.technical?.signal))}>{details?.technical?.signal}</div>
@@ -166,11 +168,129 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                 <div className="text-sm text-muted-foreground">Fundamental Signal</div>
                                 <div className={clsx("font-semibold", getSignalColor(details?.fundamental?.signal))}>{details?.fundamental?.signal}</div>
                             </div>
+                            <div className="p-4 rounded-xl bg-secondary/20 border border-border/50">
+                                <div className="text-sm text-muted-foreground">Risk Level</div>
+                                <div className={clsx("font-semibold", details?.risk?.bear_case_probability > 50 ? "text-red-500" : "text-green-500")}>
+                                    {details?.risk?.bear_case_probability}% Downside Prob
+                                </div>
+                            </div>
+                            <div className="p-4 rounded-xl bg-secondary/20 border border-border/50">
+                                <div className="text-sm text-muted-foreground">Quant Score</div>
+                                <div className="font-semibold text-blue-500">
+                                    Val: {details?.quant?.valuation_score}/10 • Grow: {details?.quant?.growth_score}/10
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
                 )}
 
-                {activeTab !== 'summary' && activeTab !== 'logs' && details && details[activeTab] && (
+                {/* QUANT TAB SPECIFIC RENDERER */}
+                {activeTab === 'quant' && details?.quant && (
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-xl bg-card border border-border/50">
+                        <div className="flex justify-between items-start mb-6">
+                            <h3 className="text-xl font-semibold capitalize">Quantitative Analysis</h3>
+                            <div className="flex gap-4">
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold">{details.quant.valuation_score}/10</div>
+                                    <div className="text-xs text-muted-foreground">Valuation</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold">{details.quant.growth_score}/10</div>
+                                    <div className="text-xs text-muted-foreground">Growth</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold">{details.quant.financial_health_score}/10</div>
+                                    <div className="text-xs text-muted-foreground">Health</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-6">
+                            <div>
+                                <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Summary</h4>
+                                <p className="bg-secondary/20 p-4 rounded-lg text-lg leading-relaxed">
+                                    {details.quant.summary}
+                                </p>
+                            </div>
+                            {details.quant.key_metrics && (
+                                <div>
+                                    <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-3">Key Data</h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        {Object.entries(details.quant.key_metrics).map(([key, value]) => (
+                                            <div key={key} className="p-3 bg-secondary/10 rounded-lg border border-border/30 overflow-hidden">
+                                                <div className="text-xs text-muted-foreground capitalize truncate" title={key.replace(/_/g, ' ')}>{key.replace(/_/g, ' ')}</div>
+                                                <div className="font-mono text-sm font-medium mt-1 truncate" title={String(value)}>{String(value)}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* RISK TAB SPECIFIC RENDERER */}
+                {activeTab === 'risk' && details?.risk && (
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-xl bg-card border border-border/50">
+                        <div className="flex justify-between items-start mb-6">
+                            <h3 className="text-xl font-semibold capitalize text-red-500">Risk Assessment</h3>
+                            <span className="px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-700">
+                                Bear Probability: {details.risk.bear_case_probability}%
+                            </span>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Worst Case */}
+                            <div className="border-l-4 border-red-500 pl-4 py-1">
+                                <h4 className="text-lg font-medium text-red-500 uppercase tracking-wider mb-1">Worst Case Scenario</h4>
+                                <p className="text-lg leading-relaxed italic text-muted-foreground">
+                                    "{details.risk.worst_case_scenario}"
+                                </p>
+                            </div>
+
+                            {/* Downside Risks */}
+                            <div>
+                                <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Downside Risks</h4>
+                                <ul className="space-y-2">
+                                    {details.risk.downside_risks?.map((risk: string, i: number) => (
+                                        <li key={i} className="flex items-start gap-2 p-2 bg-secondary/10 rounded-md">
+                                            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                                            <span>{risk}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+
+                            {/* Macro Threats */}
+                            {details.risk.macro_threats && (
+                                <div>
+                                    <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Macro Threats</h4>
+                                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        {details.risk.macro_threats.map((threat: string, i: number) => (
+                                            <li key={i} className="flex items-center gap-2 p-2 border border-border/30 rounded-md text-sm">
+                                                <TrendingUp className="w-4 h-4 text-orange-400 rotate-180" />
+                                                {threat}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+
+                            {/* Fraud Risk */}
+                            {details.risk.fraud_risk && (
+                                <div className="mt-4 p-4 bg-red-900/10 border border-red-900/20 rounded-lg">
+                                    <h4 className="text-red-500 font-bold flex items-center gap-2 mb-2">
+                                        <Activity className="w-5 h-5" />
+                                        Forensic Analysis
+                                    </h4>
+                                    <p className="text-red-300/80">{details.risk.fraud_risk}</p>
+                                </div>
+                            )}
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* STANDARD RENDERER FOR OTHER TABS */}
+                {activeTab !== 'summary' && activeTab !== 'logs' && activeTab !== 'quant' && activeTab !== 'risk' && details && details[activeTab] && (
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-xl bg-card border border-border/50">
                         <div className="flex justify-between items-start mb-6">
                             <h3 className="text-xl font-semibold capitalize">{activeTab} Analysis</h3>
@@ -198,6 +318,17 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                             </div>
                                         ))}
                                     </div>
+                                </div>
+                            )}
+                            {/* Specific rendering for Management Risks if mostly standard but has extra list */}
+                            {activeTab === 'management' && details.management.risks && (
+                                <div className="mt-4">
+                                    <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Identified Risks</h4>
+                                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                        {details.management.risks.map((r: string, i: number) => (
+                                            <li key={i}>{r}</li>
+                                        ))}
+                                    </ul>
                                 </div>
                             )}
                         </div>
