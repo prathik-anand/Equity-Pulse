@@ -3,24 +3,34 @@ from app.graph.state import AgentState
 from app.graph.agent_factory import create_structured_node
 from app.graph.schemas.analysis import PortfolioManagerOutput
 
-CIO_SYSTEM_PROMPT = """You are the Chief Investment Officer (CIO) of a prestigious hedge fund.
-Your goal is to synthesize reports from your Quant, Technical, Fundamental, Sector, and Management analysts into a cohesive Investment Memo.
+CIO_SYSTEM_PROMPT = """You are the Portfolio Manager (PM).
+Your goal is to make the final "high-conviction" investment decision.
+You must synthesize reports from 6 different analysts, including a "Risk Manager" who is trying to kill the trade.
 
-**YOUR TEAM'S REPORTS:**
-You will receive JSON outputs from each analyst.
+**YOUR TEAM:**
+1. Quant (Math)
+2. Technical (Charts)
+3. Fundamental (Value)
+4. Sector (Macro)
+5. Management (Forensic)
+6. Risk (Devil's Advocate)
 
-**YOUR JOB:**
-1.  **Arbitrate Conflicts**: If Quant says "Bearish" (High Valuation) but Technical says "Bullish" (Breakout), you must decide the strategy (e.g., "Wait for pullback" or "Momentum buy").
-2.  **Synthesize, Don't Summarize**: Do not just list what others said. specific insights to build a narrative.
-3.  **Risk Management**: Highlight the single biggest risk to the trade.
+**DECISION PROCESS (Chain of Thought):**
+1. **The Debate**:
+   - What is the strongest Bull argument? (e.g. "Undervalued with catalysts").
+   - What is the strongest Bear argument? (e.g. "Accounting irregularities" or "Technical breakdown").
+   - *Directly address the Risk Manager's points.* Do not ignore them.
+2. **Reconciliation**:
+   - If Technicals say SELL but Fundamentals say BUY, who is right in this context? (e.g. "Fundamentals look good but waiting for technical entry").
+3. **The Verdict**:
+   - Assign a Signal (BUY/SELL/HOLD).
+   - Assign Confidence (0-100%).
+4. **Final Memo**:
+   - Write a clear, executive-level summary.
 
-**OUTPUT FORMAT:**
-- **Signal**: BUY, SELL, or HOLD.
-- **Confidence**: 0-100%.
-- **Executive Summary**: 2-3 sentences for the CEO level.
-- **Investment Thesis**: The "Bull Case" narrative.
-- **Bear Case**: The "Bear Case" and key risks.
-- **Strategy**: Specific action (e.g. "Accumulate under $200").
+**TONE:**
+- Decisive, Balanced, Executive.
+- "We are allocating capital, not writing a wiki page".
 """
 
 # No tools needed for Aggregator, it just reads context
@@ -40,24 +50,28 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
     fund = state.get("fundamental_analysis", {})
     sect = state.get("sector_analysis", {})
     mgmt = state.get("management_analysis", {})
-    
+    risk = state.get("risk_analysis", {})
+
     context = f"""
     ANALYSIS REPORTS FOR {ticker}:
     
-    1. QUANT ANALYST:
+    1. QUANT REPORT:
     {quant}
     
-    2. TECHNICAL ANALYST:
+    2. TECHNICAL REPORT:
     {tech}
     
-    3. FUNDAMENTAL ANALYST:
+    3. FUNDAMENTAL REPORT:
     {fund}
     
-    4. SECTOR ANALYST:
+    4. SECTOR/MACRO REPORT:
     {sect}
     
-    5. MANAGEMENT ANALYST:
+    5. MANAGEMENT/FORENSIC REPORT:
     {mgmt}
+    
+    6. RISK/BEAR CASE REPORT:
+    {risk}
     
     Generate the Final Investment Memo.
     """
@@ -117,7 +131,8 @@ async def aggregator_node(state: AgentState) -> Dict[str, Any]:
             "fundamental": fund,
             "sector": sect,
             "management": mgmt,
-            "quant": quant # Added quant
+            "quant": quant,
+            "risk": risk
         },
         # NEW FIELDS
         "investment_thesis": final_report.get("investment_thesis"),

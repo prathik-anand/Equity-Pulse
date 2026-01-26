@@ -7,6 +7,7 @@ from app.graph.nodes.sector import sector_analysis_node
 from app.graph.nodes.management import management_analysis_node
 from app.graph.nodes.aggregator import aggregator_node
 from app.graph.nodes.quant import quant_analysis_node
+from app.graph.nodes.risk_management import risk_management_node
 
 workflow = StateGraph(AgentState)
 
@@ -18,17 +19,26 @@ workflow.add_node("sector", sector_analysis_node)
 workflow.add_node("management", management_analysis_node)
 workflow.add_node("aggregator", aggregator_node)
 workflow.add_node("quant", quant_analysis_node)
+workflow.add_node("risk", risk_management_node)
 
 # Set Entry Point
 workflow.set_entry_point("orchestrator")
 
-# Define Edges: Sequential execution for cleaner logging
+# Define Edges: Parallel execution (Scatter-Gather)
 workflow.add_edge("orchestrator", "quant")
-workflow.add_edge("quant", "technical")
-workflow.add_edge("technical", "fundamental")
-workflow.add_edge("fundamental", "sector")
-workflow.add_edge("sector", "management")
+workflow.add_edge("orchestrator", "technical")
+workflow.add_edge("orchestrator", "fundamental")
+workflow.add_edge("orchestrator", "sector")
+workflow.add_edge("orchestrator", "management")
+workflow.add_edge("orchestrator", "risk")
+
+# Fan-in: All nodes connect to aggregator
+workflow.add_edge("quant", "aggregator")
+workflow.add_edge("technical", "aggregator")
+workflow.add_edge("fundamental", "aggregator")
+workflow.add_edge("sector", "aggregator")
 workflow.add_edge("management", "aggregator")
+workflow.add_edge("risk", "aggregator")
 
 # End
 workflow.add_edge("aggregator", END)

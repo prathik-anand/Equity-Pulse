@@ -13,6 +13,7 @@ class AgentState(TypedDict):
     fundamental_analysis: Dict[str, Any]
     sector_analysis: Dict[str, Any]
     management_analysis: Dict[str, Any]
+    risk_analysis: Dict[str, Any]
     
     # Final Report
     final_report: Dict[str, Any]

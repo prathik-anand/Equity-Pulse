@@ -213,12 +213,29 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
 
             # Step 2: Synthesis with Structured Output
             structured_llm = llm.with_structured_output(schema)
-            final_prompt = messages + [HumanMessage(content="Based on the above research, generate the final structured report. You MUST use the structured output format. Do not just reply with text.")]
             
-            logger.info(f"[{agent_name}] -> Generating final structured report...")
-            analysis_object = await retry_with_backoff(structured_llm.ainvoke, final_prompt)
+            # CRITICAL FIX: The original system prompt has "Chain of Thought" instructions which confuse the JSON parser.
+            # We must STRIP the original system prompt and replace it with a strict JSON generation prompt.
+            json_system_prompt = SystemMessage(content="You are a data conversion agent. Your ONLY job is to extract the findings from the conversation above and format them into the requested JSON schema. Do not add any new analysis or text.")
             
-            final_output = analysis_object.model_dump()
+            # Filter out old SystemMessage (usually index 0)
+            cleaned_messages = [m for m in messages if not isinstance(m, SystemMessage)]
+            
+            final_prompt = [json_system_prompt] + cleaned_messages + [HumanMessage(content="Generate the final JSON output based on the research above.")]
+            
+            from langchain_core.exceptions import OutputParserException
+            try:
+                logger.info(f"[{agent_name}] -> Generating final structured report...")
+                analysis_object = await retry_with_backoff(structured_llm.ainvoke, final_prompt)
+                final_output = analysis_object.model_dump()
+            except OutputParserException as e:
+                logger.warning(f"[{agent_name}] -> JSON Parsing Failed. Attempting repair...")
+                # Fallback: Ask the LLM to fix its own output
+                repair_prompt = [HumanMessage(content=f"You generated invalid JSON. \n\nError: {str(e)}\n\nPlease output ONLY the raw valid JSON matching the schema. Do not output markdown blocks.")]
+                # We try one more time with a relaxed prompt or same structured_llm
+                analysis_object = await retry_with_backoff(structured_llm.ainvoke, repair_prompt)
+                final_output = analysis_object.model_dump()
+            
             logger.info(f"[{agent_name}] -> Analysis Completed.")
             
         except Exception as e:

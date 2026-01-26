@@ -155,8 +155,17 @@ def search_governance_issues(query: str) -> str:
     Use this for Management Analyst to assess leadership quality and governance risks.
     """
     try:
-        search = DuckDuckGoSearchRun()
-        results = search.run(query)
+        max_retries = 3
+        for i in range(max_retries):
+            try:
+                search = DuckDuckGoSearchRun()
+                results = search.run(query)
+                break
+            except Exception as e:
+                if i == max_retries - 1:
+                    raise e
+                import time
+                time.sleep(2)
         
         output = WebSearchOutput(
             query=query,
@@ -168,7 +177,7 @@ def search_governance_issues(query: str) -> str:
         output = WebSearchOutput(
             query=query,
             results="",
-            error=f"Search error: {str(e)}"
+            error=f"Search error after retries: {str(e)}"
         )
         return output.model_dump_json()
 
@@ -453,8 +462,17 @@ def search_market_trends(query: str) -> str:
     - Fundamental Analyst: Growth drivers and headwinds
     """
     try:
-        search = DuckDuckGoSearchRun()
-        results = search.run(query)
+        max_retries = 3
+        for i in range(max_retries):
+            try:
+                search = DuckDuckGoSearchRun()
+                results = search.run(query)
+                break
+            except Exception as e:
+                if i == max_retries - 1:
+                    raise e
+                import time
+                time.sleep(2)
         
         output = WebSearchOutput(
             query=query,
@@ -466,6 +484,6 @@ def search_market_trends(query: str) -> str:
         output = WebSearchOutput(
             query=query,
             results="",
-            error=f"Search error: {str(e)}"
+            error=f"Search error after retries: {str(e)}"
         )
         return output.model_dump_json()
