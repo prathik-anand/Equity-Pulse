@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { getAnalysisResult } from '../api';
 import { motion } from 'framer-motion';
-import { Activity, BarChart3, TrendingUp, Users, AlertCircle, CheckCircle2, FileText } from 'lucide-react';
+import { Activity, BarChart3, TrendingUp, Users, AlertCircle, CheckCircle2, FileText, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 import clsx from 'clsx';
 import LogViewer from './LogViewer';
 
@@ -289,8 +290,297 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                     </motion.div>
                 )}
 
+                {/* TECHNICAL TAB SPECIFIC RENDERER */}
+                {activeTab === 'technical' && details?.technical && (
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
+                        {/* Signal Header with Gauge */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-2 p-6 rounded-xl bg-card border border-border/50">
+                                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                                    <Activity className="w-5 h-5 text-primary" />
+                                    Technical Analysis
+                                </h3>
+                                <div className="bg-secondary/20 p-5 rounded-lg text-lg leading-relaxed text-muted-foreground whitespace-pre-line font-serif">
+                                    {details.technical.reasoning}
+                                </div>
+                            </div>
+                            <div className="p-6 rounded-xl bg-card border border-border/50 flex flex-col items-center justify-center relative">
+                                <div className="text-sm text-muted-foreground absolute top-4 left-4">Trend Signal</div>
+                                <div className="h-32 w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <PieChart>
+                                            <Pie
+                                                data={[
+                                                    { name: 'Bearish', value: 1 },
+                                                    { name: 'Neutral', value: 1 },
+                                                    { name: 'Bullish', value: 1 }
+                                                ]}
+                                                cx="50%"
+                                                cy="50%"
+                                                startAngle={180}
+                                                endAngle={0}
+                                                innerRadius={40}
+                                                outerRadius={60}
+                                                paddingAngle={5}
+                                                dataKey="value"
+                                            >
+                                                <Cell fill={details.technical.signal === 'SELL' ? '#ef4444' : '#334155'} />
+                                                <Cell fill={details.technical.signal === 'HOLD' ? '#eab308' : '#334155'} />
+                                                <Cell fill={details.technical.signal === 'BUY' ? '#22c55e' : '#334155'} />
+                                            </Pie>
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </div>
+                                <div className={clsx("text-2xl font-bold -mt-8", getSignalColor(details.technical.signal))}>
+                                    {details.technical.signal}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                    Confidence: {(details.technical.confidence * 100).toFixed(0)}%
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Indicators Grid */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Current Price */}
+                            <div className="p-4 rounded-xl bg-secondary/10 border border-border/30">
+                                <div className="text-xs text-muted-foreground uppercase">Current Price</div>
+                                <div className="text-2xl font-mono font-bold mt-1">${details.technical.metrics.current_price?.toFixed(2)}</div>
+                                <div className="flex items-center gap-1 text-xs mt-2 text-muted-foreground">
+                                    Trend: <span className={details.technical.metrics.trend === 'Uptrend' ? "text-green-500" : "text-red-500"}>{details.technical.metrics.trend}</span>
+                                </div>
+                            </div>
+
+                            {/* RSI */}
+                            <div className="p-4 rounded-xl bg-secondary/10 border border-border/30">
+                                <div className="text-xs text-muted-foreground uppercase flex justify-between">
+                                    <span>RSI (14)</span>
+                                    <span className={clsx("font-bold", (details.technical.metrics.rsi > 70 || details.technical.metrics.rsi < 30) ? "text-yellow-500" : "text-green-500")}>
+                                        {details.technical.metrics.rsi > 70 ? "Overbought" : details.technical.metrics.rsi < 30 ? "Oversold" : "Neutral"}
+                                    </span>
+                                </div>
+                                <div className="text-2xl font-mono font-bold mt-1">{details.technical.metrics.rsi?.toFixed(1) || "N/A"}</div>
+                                {/* RSI Bar */}
+                                <div className="w-full h-2 bg-slate-800 rounded-full mt-2 overflow-hidden relative">
+                                    <div className="absolute top-0 bottom-0 w-full flex">
+                                        <div className="w-[30%] bg-green-900/30 border-r border-slate-700"></div>
+                                        <div className="w-[40%] bg-slate-800"></div>
+                                        <div className="w-[30%] bg-red-900/30 border-l border-slate-700"></div>
+                                    </div>
+                                    <div
+                                        className="h-full w-1 bg-white absolute top-0"
+                                        style={{ left: `${Math.min(Math.max(details.technical.metrics.rsi || 50, 0), 100)}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+
+                            {/* MACD */}
+                            <div className="p-4 rounded-xl bg-secondary/10 border border-border/30">
+                                <div className="text-xs text-muted-foreground uppercase">MACD Signal</div>
+                                <div className={clsx("text-2xl font-mono font-bold mt-1 uppercase",
+                                    details.technical.metrics.macd_signal === 'Bullish' ? "text-green-500" :
+                                        details.technical.metrics.macd_signal === 'Bearish' ? "text-red-500" : "text-yellow-500")}>
+                                    {details.technical.metrics.macd_signal || "N/A"}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-2">
+                                    Momentum Indicator
+                                </div>
+                            </div>
+
+                            {/* Volume */}
+                            <div className="p-4 rounded-xl bg-secondary/10 border border-border/30">
+                                <div className="text-xs text-muted-foreground uppercase">Volume Intensity</div>
+                                <div className="text-2xl font-mono font-bold mt-1">{details.technical.metrics.volume_analysis || "Neutral"}</div>
+                                <div className="text-xs text-muted-foreground mt-2">
+                                    Relative Volume
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Moving Averages Signals */}
+                        {details.technical.metrics.moving_average_signals && Object.keys(details.technical.metrics.moving_average_signals).length > 0 && (
+                            <div className="grid grid-cols-3 gap-4">
+                                {Object.entries(details.technical.metrics.moving_average_signals).map(([ma, signal]: [string, any]) => (
+                                    <div key={ma} className="flex items-center justify-between p-3 bg-secondary/10 rounded-lg border border-border/30">
+                                        <span className="text-sm font-medium uppercase text-muted-foreground">{ma.replace('_', ' ')}</span>
+                                        <span className={clsx("flex items-center gap-1 text-sm font-bold",
+                                            signal === 'Bullish' ? "text-green-500" : signal === 'Bearish' ? "text-red-500" : "text-yellow-500"
+                                        )}>
+                                            {signal === 'Bullish' ? <ArrowUpRight className="w-4 h-4" /> :
+                                                signal === 'Bearish' ? <ArrowDownRight className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
+                                            {signal}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {/* Support/Resistance */}
+                        <div className="p-6 rounded-xl bg-secondary/5 border border-border/30 relative mt-4">
+                            <h4 className="text-sm font-semibold uppercase text-muted-foreground mb-6">Key Levels</h4>
+                            <div className="relative h-12 w-full flex items-center">
+                                {/* Base Line */}
+                                <div className="absolute w-full h-1 bg-slate-800 rounded-full"></div>
+
+                                {/* Support Marker */}
+                                {details.technical.metrics.support_level && (
+                                    <div className="absolute flex flex-col items-center" style={{ left: '20%' }}>
+                                        <div className="w-2 h-2 bg-green-500 rounded-full mb-1"></div>
+                                        <div className="text-xs text-green-500 font-mono">${details.technical.metrics.support_level}</div>
+                                        <div className="text-[10px] text-muted-foreground uppercase mt-1">Support</div>
+                                    </div>
+                                )}
+
+                                {/* Price Marker */}
+                                <div className="absolute flex flex-col items-center z-10" style={{ left: '50%' }}>
+                                    <div className="w-4 h-4 bg-white rounded-full border-4 border-slate-900 mb-1 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+                                    <div className="text-sm font-bold font-mono">${details.technical.metrics.current_price}</div>
+                                    <div className="text-[10px] text-muted-foreground uppercase mt-1">Current</div>
+                                </div>
+
+                                {/* Resistance Marker */}
+                                {details.technical.metrics.resistance_level && (
+                                    <div className="absolute flex flex-col items-center" style={{ left: '80%' }}>
+                                        <div className="w-2 h-2 bg-red-500 rounded-full mb-1"></div>
+                                        <div className="text-xs text-red-500 font-mono">${details.technical.metrics.resistance_level}</div>
+                                        <div className="text-[10px] text-muted-foreground uppercase mt-1">Resistance</div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* FUNDAMENTAL TAB SPECIFIC RENDERER */}
+                {activeTab === 'fundamental' && details?.fundamental && (
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-2 p-6 rounded-xl bg-card border border-border/50 flex flex-col">
+                                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                                    <BarChart3 className="w-5 h-5 text-primary" />
+                                    Fundamental Analysis
+                                </h3>
+                                <div className="bg-secondary/20 p-5 rounded-lg text-lg leading-relaxed text-muted-foreground whitespace-pre-line font-serif">
+                                    {details.fundamental.reasoning}
+                                </div>
+                            </div>
+
+                            {/* RADAR CHART & STATUS CARD */}
+                            <div className="p-6 rounded-xl bg-card border border-border/50 flex flex-col justify-between">
+                                <div className="h-64 w-full -ml-4">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
+                                            {
+                                                subject: 'Health',
+                                                A: details.fundamental.details.financial_health === 'Strong' ? 100 : details.fundamental.details.financial_health === 'Stable' ? 70 : 40,
+                                                fullMark: 100,
+                                            },
+                                            {
+                                                subject: 'Growth',
+                                                A: details.fundamental.details.growth_trajectory === 'Accelerating' ? 100 : details.fundamental.details.growth_trajectory === 'Stagnant' ? 50 : 30,
+                                                fullMark: 100,
+                                            },
+                                            {
+                                                subject: 'Value',
+                                                A: details.fundamental.details.valuation === 'Undervalued' ? 100 : details.fundamental.details.valuation === 'Fair' ? 70 : 40,
+                                                fullMark: 100,
+                                            },
+                                            {
+                                                subject: 'Moat',
+                                                A: details.fundamental.details.financial_health === 'Strong' ? 90 : 60, // Proxy derived
+                                                fullMark: 100,
+                                            },
+                                            {
+                                                subject: 'Safety',
+                                                A: details.fundamental.details.debt_to_equity && details.fundamental.details.debt_to_equity < 50 ? 90 : 60,
+                                                fullMark: 100,
+                                            }
+                                        ]}>
+                                            <PolarGrid stroke="#334155" />
+                                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                            <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                            <Radar
+                                                name="Fundamentals"
+                                                dataKey="A"
+                                                stroke="#10b981"
+                                                strokeWidth={2}
+                                                fill="#10b981"
+                                                fillOpacity={0.3}
+                                            />
+                                        </RadarChart>
+                                    </ResponsiveContainer>
+                                </div>
+
+                                <div className="space-y-3 mt-2">
+                                    <div className="flex justify-between items-center px-2">
+                                        <span className="text-sm text-muted-foreground">Health</span>
+                                        <span className={clsx("font-bold text-sm", details.fundamental.details.financial_health === 'Strong' ? "text-green-500" : "text-yellow-500")}>
+                                            {details.fundamental.details.financial_health}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center px-2">
+                                        <span className="text-sm text-muted-foreground">Growth</span>
+                                        <span className={clsx("font-bold text-sm", details.fundamental.details.growth_trajectory === 'Accelerating' ? "text-green-500" : "text-yellow-500")}>
+                                            {details.fundamental.details.growth_trajectory}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center px-2">
+                                        <span className="text-sm text-muted-foreground">Valuation</span>
+                                        <span className={clsx("font-bold text-sm", details.fundamental.details.valuation === 'Undervalued' ? "text-green-500" : details.fundamental.details.valuation === 'Fair' ? "text-yellow-500" : "text-red-500")}>
+                                            {details.fundamental.details.valuation}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Ratios Grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
+                                <div className="text-[10px] text-muted-foreground uppercase">P/E Ratio</div>
+                                <div className={clsx("text-lg font-mono font-bold",
+                                    (details.fundamental.details.pe_ratio > 30) ? "text-red-400" : "text-green-400")}>
+                                    {details.fundamental.details.pe_ratio || "N/A"}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
+                                <div className="text-[10px] text-muted-foreground uppercase">P/B Ratio</div>
+                                <div className="text-lg font-mono font-bold text-foreground">
+                                    {details.fundamental.details.pb_ratio || "N/A"}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
+                                <div className="text-[10px] text-muted-foreground uppercase">PEG</div>
+                                <div className={clsx("text-lg font-mono font-bold",
+                                    (details.fundamental.details.peg_ratio < 1.0) ? "text-green-400" : "text-yellow-400")}>
+                                    {details.fundamental.details.peg_ratio || "N/A"}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
+                                <div className="text-[10px] text-muted-foreground uppercase">Debt/Eq</div>
+                                <div className="text-lg font-mono font-bold text-foreground">
+                                    {details.fundamental.details.debt_to_equity || "N/A"}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
+                                <div className="text-[10px] text-muted-foreground uppercase">Rev Growth</div>
+                                <div className="text-lg font-mono font-bold text-green-400">
+                                    {details.fundamental.details.revenue_growth ? `${details.fundamental.details.revenue_growth}%` : "N/A"}
+                                </div>
+                            </div>
+                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
+                                <div className="text-[10px] text-muted-foreground uppercase">Profit Margin</div>
+                                <div className="text-lg font-mono font-bold text-green-400">
+                                    {details.fundamental.details.profit_margin ? `${details.fundamental.details.profit_margin}%` : "N/A"}
+                                </div>
+                            </div>
+                        </div>
+
+                    </motion.div>
+                )}
+
                 {/* STANDARD RENDERER FOR OTHER TABS */}
-                {activeTab !== 'summary' && activeTab !== 'logs' && activeTab !== 'quant' && activeTab !== 'risk' && details && details[activeTab] && (
+                {activeTab !== 'summary' && activeTab !== 'logs' && activeTab !== 'quant' && activeTab !== 'risk' && activeTab !== 'technical' && activeTab !== 'fundamental' && details && details[activeTab] && (
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-xl bg-card border border-border/50">
                         <div className="flex justify-between items-start mb-6">
                             <h3 className="text-xl font-semibold capitalize">{activeTab} Analysis</h3>
@@ -302,9 +592,9 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                         <div className="space-y-6">
                             <div>
                                 <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Reasoning</h4>
-                                <p className="bg-secondary/20 p-4 rounded-lg text-lg leading-relaxed">
+                                <div className="bg-secondary/20 p-5 rounded-lg text-lg leading-relaxed whitespace-pre-line font-serif">
                                     {details[activeTab].reasoning || details[activeTab].summary || "No detailed reasoning provided."}
-                                </p>
+                                </div>
                             </div>
 
                             {details[activeTab].metrics && (

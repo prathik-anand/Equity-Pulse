@@ -212,29 +212,80 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
             messages = result["messages"]
 
             # Step 2: Synthesis with Structured Output
-            structured_llm = llm.with_structured_output(schema)
+            # We use include_raw=True to handle cases where the model wraps JSON in markdown
+            structured_llm = llm.with_structured_output(schema, include_raw=True)
             
-            # CRITICAL FIX: The original system prompt has "Chain of Thought" instructions which confuse the JSON parser.
-            # We must STRIP the original system prompt and replace it with a strict JSON generation prompt.
-            json_system_prompt = SystemMessage(content="You are a data conversion agent. Your ONLY job is to extract the findings from the conversation above and format them into the requested JSON schema. Do not add any new analysis or text.")
+            # Clean System Prompt (No "Prompt Engineering" hacks needed if we parse correctly)
+            json_system_prompt = SystemMessage(content="You are a data conversion agent. Extract the findings from the conversation above and format them into the requested JSON schema.")
             
             # Filter out old SystemMessage (usually index 0)
             cleaned_messages = [m for m in messages if not isinstance(m, SystemMessage)]
             
-            final_prompt = [json_system_prompt] + cleaned_messages + [HumanMessage(content="Generate the final JSON output based on the research above.")]
+            final_prompt = [json_system_prompt] + cleaned_messages + [HumanMessage(content="Generate the final JSON output.")]
             
-            from langchain_core.exceptions import OutputParserException
+            import json
+            import re
+            
+            def clean_json_string(text: str) -> str:
+                """Removes markdown code blocks and whitespace."""
+                text = text.strip()
+                # Remove ```json and ``` patterns
+                text = re.sub(r'^```json\s*', '', text)
+                text = re.sub(r'^```\s*', '', text)
+                text = re.sub(r'\s*```$', '', text)
+                return text.strip()
+
+            # Helper to extract text from potential list content
+            def extract_text_from_message(content: Any) -> str:
+                if isinstance(content, str):
+                    return content
+                elif isinstance(content, list):
+                    text_parts = []
+                    for part in content:
+                        if isinstance(part, dict) and "text" in part:
+                            text_parts.append(part["text"])
+                        elif isinstance(part, str):
+                            text_parts.append(part)
+                    return "".join(text_parts)
+                return str(content)
+
             try:
                 logger.info(f"[{agent_name}] -> Generating final structured report...")
-                analysis_object = await retry_with_backoff(structured_llm.ainvoke, final_prompt)
-                final_output = analysis_object.model_dump()
-            except OutputParserException as e:
-                logger.warning(f"[{agent_name}] -> JSON Parsing Failed. Attempting repair...")
-                # Fallback: Ask the LLM to fix its own output
-                repair_prompt = [HumanMessage(content=f"You generated invalid JSON. \n\nError: {str(e)}\n\nPlease output ONLY the raw valid JSON matching the schema. Do not output markdown blocks.")]
-                # We try one more time with a relaxed prompt or same structured_llm
-                analysis_object = await retry_with_backoff(structured_llm.ainvoke, repair_prompt)
-                final_output = analysis_object.model_dump()
+                # Response will be {"parsed": BaseModel | None, "raw": BaseMessage, "parsing_error": ...}
+                response = await retry_with_backoff(structured_llm.ainvoke, final_prompt)
+                
+                if response['parsed'] is not None:
+                    final_output = response['parsed'].model_dump()
+                else:
+                    # Parsing failed automatically, likely due to markdown. Let's fix it manually.
+                    logger.warning(f"[{agent_name}] -> Automatic parsing failed. Attempting manual cleanup.")
+                    raw_content = extract_text_from_message(response['raw'].content)
+                    cleaned_json = clean_json_string(raw_content)
+                    
+                    # Manual Validation using the Pydantic Schema
+                    # schema is the Pydantic class passed in arguments
+                    try:
+                        # First load into dict
+                        data_dict = json.loads(cleaned_json)
+                        # Then validate via Pydantic
+                        validated_obj = schema(**data_dict)
+                        final_output = validated_obj.model_dump()
+                        logger.info(f"[{agent_name}] -> Manual cleanup successful.")
+                    except Exception as validation_error:
+                         # Last Resort: Retry Loop (but cleaner)
+                        logger.warning(f"[{agent_name}] -> Manual cleanup failed: {validation_error}. Retrying execution...")
+                        repair_prompt = [json_system_prompt] + cleaned_messages + [HumanMessage(content=f"Previous attempt produced invalid JSON:\n{raw_content}\n\nError: {str(validation_error)}\n\nPlease generate ONLY the raw valid JSON.")]
+                        retry_response = await retry_with_backoff(structured_llm.ainvoke, repair_prompt)
+                        
+                        if retry_response['parsed']:
+                            final_output = retry_response['parsed'].model_dump()
+                        else:
+                            # Final desperation: try to parse the retry raw output
+                            final_output = json.loads(clean_json_string(extract_text_from_message(retry_response['raw'].content)))
+
+            except Exception as e:
+                logger.error(f"[{agent_name}] -> Critical Failure in JSON Generation", exc=e)
+                final_output = None
             
             logger.info(f"[{agent_name}] -> Analysis Completed.")
             

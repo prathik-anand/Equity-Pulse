@@ -1,11 +1,18 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+from typing import List, Optional, Literal, Dict
 
 class TechnicalMetrics(BaseModel):
-    current_price: float = Field(..., description="Current trading price of the asset")
-    support_level: Optional[float] = Field(None, description="Estimated nearest support level")
-    resistance_level: Optional[float] = Field(None, description="Estimated nearest resistance level")
-    trend: Literal["Uptrend", "Downtrend", "Sideways"] = Field(..., description="Current immediate price trend")
+    current_price: float = Field(..., description="Current trading price")
+    support_level: Optional[float] = Field(None, description="Nearest support level")
+    resistance_level: Optional[float] = Field(None, description="Nearest resistance level")
+    rsi: Optional[float] = Field(None, description="RSI (14) value")
+    macd_signal: Optional[Literal["Bullish", "Bearish", "Neutral"]] = Field(None, description="MACD signal status")
+    moving_average_signals: Dict[str, Literal["Bullish", "Bearish", "Neutral"]] = Field(
+        default_factory=dict, 
+        description="Signals for SMA 20, 50, 200 (e.g., {'sma_50': 'Bullish'})"
+    )
+    volume_analysis: Optional[Literal["High", "Low", "Neutral"]] = Field(None, description="Relative volume analysis")
+    trend: Literal["Uptrend", "Downtrend", "Sideways"] = Field(..., description="Primary trend direction")
 
 class TechnicalAnalysis(BaseModel):
     signal: Literal["BUY", "SELL", "HOLD"] = Field(..., description="Final trading signal based on technicals")
@@ -17,6 +24,13 @@ class FundamentalDetails(BaseModel):
     financial_health: Literal["Strong", "Weak", "Stable"] = Field(..., description="Overall balance sheet health")
     growth_trajectory: Literal["Accelerating", "Decelerating", "Stagnant"] = Field(..., description="Revenue/Earnings growth trend")
     valuation: Literal["Overvalued", "Undervalued", "Fair"] = Field(..., description="Current valuation assessment")
+    # Specific Metrics for Visuals
+    pe_ratio: Optional[float] = Field(None, description="Price to Earnings Ratio")
+    pb_ratio: Optional[float] = Field(None, description="Price to Book Ratio")
+    peg_ratio: Optional[float] = Field(None, description="Price/Earnings-to-Growth Ratio")
+    debt_to_equity: Optional[float] = Field(None, description="Debt to Equity Ratio")
+    revenue_growth: Optional[float] = Field(None, description="YoY Revenue Growth %")
+    profit_margin: Optional[float] = Field(None, description="Net Profit Margin %")
 
 class FundamentalAnalysis(BaseModel):
     signal: Literal["BUY", "SELL", "HOLD"] = Field(..., description="Final investment signal based on fundamentals")

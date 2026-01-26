@@ -24,6 +24,21 @@ You DO NOT care about the "fundamentals". Price is truth.
 - Clinical, decisive.
 - "The trend is your friend".
 - Use specific price levels.
+
+**CRITICAL INSTRUCTION: DATA EXTRACTION**
+- You MUST populate `rsi` with the exact float value (e.g., 65.4).
+- You MUST determine `macd_signal` ("Bullish", "Bearish", "Neutral").
+- For `moving_average_signals`, analyze SMA 20, 50, 200 vs Price. Return dict: {"sma_20": "Bullish", "sma_50": "Bearish"} etc.
+- `volume_analysis`: "High" if Rel Vol > 1.2, "Low" if < 0.8.
+
+**CRITICAL INSTRUCTION: REASONING STRUCTURE**
+- The `reasoning` field must be formatted as a structured mini-report using specific headers (but NO markdown blocks like ```).
+- Use this structure:
+  "THE SETUP: [Describe chart pattern, e.g. Bull Flag, Head & Shoulders]
+   MOMENTUM: [RSI/MACD interaction]
+   VOLUME: [Institutional activity]
+   VERDICT: [Final conclusion]"
+- Be highly specific. Do not say "good trend". Say "Price reclaimed the 50 SMA on 2x average volume".
 """
 
 run_technical_agent = create_structured_node(

@@ -31,6 +31,7 @@ You must synthesize reports from 6 different analysts, including a "Risk Manager
 **TONE:**
 - Decisive, Balanced, Executive.
 - "We are allocating capital, not writing a wiki page".
+- **Generative Intelligence Tone**: Your summary should read like a premium Wall Street research note written by a senior strategist. It should be insightful, forward-looking, and dense with meaning. Avoid generic AI phrases like "The company shows...". Instead, use active voice and strong verbs: "NVDA dominates...", "The market overlooks...", "Valuation compression risks...".
 """
 
 # No tools needed for Aggregator, it just reads context
