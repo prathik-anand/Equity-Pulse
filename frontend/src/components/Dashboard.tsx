@@ -81,9 +81,29 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
     const getSignalColor = (signal: string) => {
         if (!signal) return "text-gray-500";
         const s = signal.toUpperCase();
-        if (s === 'BUY' || s === 'BULLISH') return "text-green-500";
-        if (s === 'SELL' || s === 'BEARISH') return "text-red-500";
-        return "text-yellow-500";
+        if (s === 'BUY' || s === 'BULLISH' || s === 'STRONG') return "text-emerald-400";
+        if (s === 'SELL' || s === 'BEARISH' || s === 'WEAK') return "text-rose-400";
+        return "text-amber-400";
+    };
+
+    const getSentimentStyles = (signal: string | number) => {
+        // Handle numeric scores (0-10)
+        if (typeof signal === 'number') {
+            if (signal >= 7) return "bg-slate-950/50 border-l-4 border-l-emerald-500 border-y border-r border-slate-800/50";
+            if (signal <= 4) return "bg-slate-950/50 border-l-4 border-l-rose-500 border-y border-r border-slate-800/50";
+            return "bg-slate-950/50 border-l-4 border-l-amber-500 border-y border-r border-slate-800/50";
+        }
+
+        if (!signal) return "bg-slate-950/50 border border-slate-800/50";
+        const s = String(signal).toUpperCase();
+
+        if (s === 'BUY' || s === 'BULLISH' || s === 'STRONG' || s === 'ACCELERATING' || s === 'UNDERVALUED')
+            return "bg-slate-950/50 border-l-4 border-l-emerald-500 border-y border-r border-slate-800/50";
+
+        if (s === 'SELL' || s === 'BEARISH' || s === 'WEAK' || s === 'STAGNANT' || s === 'OVERVALUED')
+            return "bg-slate-950/50 border-l-4 border-l-rose-500 border-y border-r border-slate-800/50";
+
+        return "bg-slate-950/50 border-l-4 border-l-amber-500 border-y border-r border-slate-800/50";
     };
 
     const tabs = [
@@ -105,8 +125,8 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                 </button>
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-3xl font-bold">{data.ticker}</h1>
-                        <p className="text-muted-foreground text-sm">Analysis Report • {new Date(data.created_at).toLocaleDateString()}</p>
+                        <h1 className="text-5xl font-black tracking-tighter text-white mb-2">{data.ticker}</h1>
+                        <p className="text-slate-500 text-sm font-medium tracking-wide uppercase">Analysis Report • {new Date(data.created_at).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
                         <div className={clsx("text-4xl font-bold", getSignalColor(final_signal))}>
@@ -128,9 +148,9 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={clsx(
-                                "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap",
+                                "flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap",
                                 activeTab === tab.id
-                                    ? "bg-primary/10 text-primary"
+                                    ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-105"
                                     : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                             )}
                         >
@@ -151,33 +171,33 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                 {activeTab === 'summary' && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                        <div className="p-6 rounded-xl bg-card border border-border/50 shadow-sm">
-                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                <CheckCircle2 className="w-5 h-5 text-primary" />
+                        <div className={clsx("p-6 rounded-xl backdrop-blur-sm transition-all duration-500", getSentimentStyles(final_signal))}>
+                            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-indigo-400">
+                                <CheckCircle2 className={clsx("w-5 h-5", getSignalColor(final_signal))} />
                                 Executive Summary
                             </h3>
-                            <p className="leading-relaxed text-muted-foreground">{summary}</p>
+                            <p className="leading-relaxed text-slate-400 text-[15px] max-w-4xl">{summary}</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {/* Quick stats mini-cards */}
-                            <div className="p-4 rounded-xl bg-secondary/20 border border-border/50">
-                                <div className="text-sm text-muted-foreground">Technical Signal</div>
-                                <div className={clsx("font-semibold", getSignalColor(details?.technical?.signal))}>{details?.technical?.signal}</div>
+                            <div className={clsx("p-4 rounded-xl border transition-colors", getSentimentStyles(details?.technical?.signal))}>
+                                <div className="text-sm text-muted-foreground mb-1">Technical Signal</div>
+                                <div className={clsx("font-semibold text-lg", getSignalColor(details?.technical?.signal))}>{details?.technical?.signal}</div>
                             </div>
-                            <div className="p-4 rounded-xl bg-secondary/20 border border-border/50">
-                                <div className="text-sm text-muted-foreground">Fundamental Signal</div>
-                                <div className={clsx("font-semibold", getSignalColor(details?.fundamental?.signal))}>{details?.fundamental?.signal}</div>
+                            <div className={clsx("p-4 rounded-xl border transition-colors", getSentimentStyles(details?.fundamental?.signal))}>
+                                <div className="text-sm text-muted-foreground mb-1">Fundamental Signal</div>
+                                <div className={clsx("font-semibold text-lg", getSignalColor(details?.fundamental?.signal))}>{details?.fundamental?.signal}</div>
                             </div>
-                            <div className="p-4 rounded-xl bg-secondary/20 border border-border/50">
-                                <div className="text-sm text-muted-foreground">Risk Level</div>
-                                <div className={clsx("font-semibold", details?.risk?.bear_case_probability > 50 ? "text-red-500" : "text-green-500")}>
+                            <div className={clsx("p-4 rounded-xl border transition-colors", getSentimentStyles(details?.risk?.bear_case_probability > 50 ? 'WEAK' : 'STRONG'))}>
+                                <div className="text-sm text-muted-foreground mb-1">Risk Level</div>
+                                <div className={clsx("font-semibold text-lg", details?.risk?.bear_case_probability > 50 ? "text-rose-400" : "text-emerald-400")}>
                                     {details?.risk?.bear_case_probability}% Downside Prob
                                 </div>
                             </div>
-                            <div className="p-4 rounded-xl bg-secondary/20 border border-border/50">
-                                <div className="text-sm text-muted-foreground">Quant Score</div>
-                                <div className="font-semibold text-blue-500">
+                            <div className={clsx("p-4 rounded-xl border transition-colors", getSentimentStyles(details?.quant?.valuation_score))}>
+                                <div className="text-sm text-muted-foreground mb-1">Quant Score</div>
+                                <div className="font-semibold text-lg text-blue-400">
                                     Val: {details?.quant?.valuation_score}/10 • Grow: {details?.quant?.growth_score}/10
                                 </div>
                             </div>
@@ -187,39 +207,39 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                 {/* QUANT TAB SPECIFIC RENDERER */}
                 {activeTab === 'quant' && details?.quant && (
-                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-xl bg-card border border-border/50">
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={clsx("p-6 rounded-xl shadow-sm transition-all", getSentimentStyles(details.quant.valuation_score))}>
                         <div className="flex justify-between items-start mb-6">
-                            <h3 className="text-xl font-semibold capitalize">Quantitative Analysis</h3>
+                            <h3 className="text-xl font-bold capitalize text-indigo-400">Quantitative Analysis</h3>
                             <div className="flex gap-4">
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{details.quant.valuation_score}/10</div>
-                                    <div className="text-xs text-muted-foreground">Valuation</div>
+                                    <div className={clsx("text-2xl font-bold", getSignalColor(details.quant.valuation_score > 7 ? 'STRONG' : details.quant.valuation_score < 4 ? 'WEAK' : 'NEUTRAL'))}>{details.quant.valuation_score}/10</div>
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mt-1">Valuation</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{details.quant.growth_score}/10</div>
-                                    <div className="text-xs text-muted-foreground">Growth</div>
+                                    <div className={clsx("text-2xl font-bold", getSignalColor(details.quant.growth_score > 7 ? 'STRONG' : details.quant.growth_score < 4 ? 'WEAK' : 'NEUTRAL'))}>{details.quant.growth_score}/10</div>
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mt-1">Growth</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold">{details.quant.financial_health_score}/10</div>
-                                    <div className="text-xs text-muted-foreground">Health</div>
+                                    <div className={clsx("text-2xl font-bold", getSignalColor(details.quant.financial_health_score > 7 ? 'STRONG' : details.quant.financial_health_score < 4 ? 'WEAK' : 'NEUTRAL'))}>{details.quant.financial_health_score}/10</div>
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-widest font-semibold mt-1">Health</div>
                                 </div>
                             </div>
                         </div>
                         <div className="space-y-6">
                             <div>
-                                <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Summary</h4>
-                                <p className="bg-secondary/20 p-4 rounded-lg text-lg leading-relaxed">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Summary</h4>
+                                <p className="bg-slate-900 border border-slate-800 p-5 rounded-lg text-lg leading-relaxed text-slate-400 font-serif shadow-inner">
                                     {details.quant.summary}
                                 </p>
                             </div>
                             {details.quant.key_metrics && (
                                 <div>
-                                    <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-3">Key Data</h4>
+                                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 mt-6">Key Data</h4>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {Object.entries(details.quant.key_metrics).map(([key, value]) => (
-                                            <div key={key} className="p-3 bg-secondary/10 rounded-lg border border-border/30 overflow-hidden">
-                                                <div className="text-xs text-muted-foreground capitalize truncate" title={key.replace(/_/g, ' ')}>{key.replace(/_/g, ' ')}</div>
-                                                <div className="font-mono text-sm font-medium mt-1 truncate" title={String(value)}>{String(value)}</div>
+                                            <div key={key} className="p-4 bg-slate-900 border border-slate-800 rounded-lg hover:border-slate-700 transition-colors group">
+                                                <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 group-hover:text-slate-400" title={key.replace(/_/g, ' ')}>{key.replace(/_/g, ' ')}</div>
+                                                <div className="font-mono text-sm font-semibold truncate text-slate-200 group-hover:text-white" title={String(value)}>{String(value)}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -231,10 +251,10 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                 {/* RISK TAB SPECIFIC RENDERER */}
                 {activeTab === 'risk' && details?.risk && (
-                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-xl bg-card border border-border/50">
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={clsx("p-6 rounded-xl border shadow-sm transition-all", getSentimentStyles(details?.risk?.bear_case_probability > 50 ? 'WEAK' : 'STRONG'))}>
                         <div className="flex justify-between items-start mb-6">
-                            <h3 className="text-xl font-semibold capitalize text-red-500">Risk Assessment</h3>
-                            <span className="px-3 py-1 rounded-full text-sm font-bold bg-red-100 text-red-700">
+                            <h3 className="text-xl font-semibold capitalize text-rose-400">Risk Assessment</h3>
+                            <span className={clsx("px-3 py-1 rounded-full text-sm font-bold border", details.risk.bear_case_probability > 50 ? "bg-rose-500/10 text-rose-400 border-rose-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20")}>
                                 Bear Probability: {details.risk.bear_case_probability}%
                             </span>
                         </div>
@@ -250,12 +270,12 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                             {/* Downside Risks */}
                             <div>
-                                <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Downside Risks</h4>
+                                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Downside Risks</h4>
                                 <ul className="space-y-2">
                                     {details.risk.downside_risks?.map((risk: string, i: number) => (
-                                        <li key={i} className="flex items-start gap-2 p-2 bg-secondary/10 rounded-md">
-                                            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-                                            <span>{risk}</span>
+                                        <li key={i} className="flex items-start gap-2 p-3 bg-transparent border border-white/5 rounded-md hover:bg-white/5 transition-colors">
+                                            <AlertCircle className="w-5 h-5 text-red-500/80 shrink-0 mt-0.5" />
+                                            <span className="text-slate-300 text-sm leading-relaxed">{risk}</span>
                                         </li>
                                     ))}
                                 </ul>
@@ -295,12 +315,12 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
                         {/* Signal Header with Gauge */}
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="md:col-span-2 p-6 rounded-xl bg-card border border-border/50">
-                                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                    <Activity className="w-5 h-5 text-primary" />
+                            <div className={clsx("md:col-span-2 p-6 rounded-xl shadow-sm transition-all", getSentimentStyles(details.technical.signal))}>
+                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-indigo-400">
+                                    <Activity className={clsx("w-5 h-5", getSignalColor(details.technical.signal))} />
                                     Technical Analysis
                                 </h3>
-                                <div className="bg-secondary/20 p-5 rounded-lg text-lg leading-relaxed text-muted-foreground whitespace-pre-line font-serif">
+                                <div className="bg-slate-900/50 border border-white/5 p-5 rounded-lg text-lg leading-relaxed text-slate-300 whitespace-pre-line font-serif">
                                     {details.technical.reasoning}
                                 </div>
                             </div>
@@ -460,12 +480,12 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                 {activeTab === 'fundamental' && details?.fundamental && (
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className="md:col-span-2 p-6 rounded-xl bg-card border border-border/50 flex flex-col">
-                                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
-                                    <BarChart3 className="w-5 h-5 text-primary" />
+                            <div className={clsx("md:col-span-2 p-6 rounded-xl shadow-sm flex flex-col transition-all", getSentimentStyles(details.fundamental.signal))}>
+                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-indigo-400">
+                                    <BarChart3 className={clsx("w-5 h-5", getSignalColor(details.fundamental.signal))} />
                                     Fundamental Analysis
                                 </h3>
-                                <div className="bg-secondary/20 p-5 rounded-lg text-lg leading-relaxed text-muted-foreground whitespace-pre-line font-serif">
+                                <div className="bg-slate-900/50 border border-white/5 p-5 rounded-lg text-lg leading-relaxed text-slate-300 whitespace-pre-line font-serif">
                                     {details.fundamental.reasoning}
                                 </div>
                             </div>
@@ -541,47 +561,47 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                         {/* Ratios Grid */}
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
-                                <div className="text-[10px] text-muted-foreground uppercase">P/E Ratio</div>
-                                <div className={clsx("text-lg font-mono font-bold",
+                            <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
+                                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">P/E Ratio</div>
+                                <div className={clsx("text-lg font-mono font-bold mt-1",
                                     (details.fundamental.details.pe_ratio > 30) ? "text-red-400" : "text-green-400")}>
                                     {details.fundamental.details.pe_ratio || "N/A"}
                                 </div>
                             </div>
-                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
-                                <div className="text-[10px] text-muted-foreground uppercase">P/B Ratio</div>
-                                <div className="text-lg font-mono font-bold text-foreground">
+                            <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
+                                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">P/B Ratio</div>
+                                <div className="text-lg font-mono font-bold text-foreground mt-1">
                                     {details.fundamental.details.pb_ratio || "N/A"}
                                 </div>
                             </div>
-                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
-                                <div className="text-[10px] text-muted-foreground uppercase">PEG</div>
-                                <div className={clsx("text-lg font-mono font-bold",
+                            <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
+                                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">PEG</div>
+                                <div className={clsx("text-lg font-mono font-bold mt-1",
                                     (details.fundamental.details.peg_ratio < 1.0) ? "text-green-400" : "text-yellow-400")}>
                                     {details.fundamental.details.peg_ratio || "N/A"}
                                 </div>
                             </div>
-                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
-                                <div className="text-[10px] text-muted-foreground uppercase">Debt/Eq</div>
-                                <div className="text-lg font-mono font-bold text-foreground">
+                            <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
+                                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Debt/Eq</div>
+                                <div className="text-lg font-mono font-bold text-foreground mt-1">
                                     {details.fundamental.details.debt_to_equity || "N/A"}
                                 </div>
                             </div>
-                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
-                                <div className="text-[10px] text-muted-foreground uppercase">Rev Growth</div>
-                                <div className="text-lg font-mono font-bold text-green-400">
+                            <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
+                                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Rev Growth</div>
+                                <div className="text-lg font-mono font-bold text-green-400 mt-1">
                                     {details.fundamental.details.revenue_growth ? `${details.fundamental.details.revenue_growth}%` : "N/A"}
                                 </div>
                             </div>
-                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
-                                <div className="text-[10px] text-muted-foreground uppercase">Profit Margin</div>
-                                <div className="text-lg font-mono font-bold text-green-400">
+                            <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
+                                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Profit Margin</div>
+                                <div className="text-lg font-mono font-bold text-green-400 mt-1">
                                     {details.fundamental.details.profit_margin ? `${details.fundamental.details.profit_margin}%` : "N/A"}
                                 </div>
                             </div>
-                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
-                                <div className="text-[10px] text-muted-foreground uppercase">Div Yield</div>
-                                <div className="text-lg font-mono font-bold text-green-400">
+                            <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
+                                <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Div Yield</div>
+                                <div className="text-lg font-mono font-bold text-green-400 mt-1">
                                     {details.fundamental.details.dividend_yield ? `${details.fundamental.details.dividend_yield}%` : "N/A"}
                                 </div>
                             </div>
@@ -592,18 +612,21 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                 {/* STANDARD RENDERER FOR OTHER TABS */}
                 {activeTab !== 'summary' && activeTab !== 'logs' && activeTab !== 'quant' && activeTab !== 'risk' && activeTab !== 'technical' && activeTab !== 'fundamental' && details && details[activeTab] && (
-                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="p-6 rounded-xl bg-card border border-border/50">
+                    <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={clsx("p-6 rounded-xl border shadow-sm transition-all", getSentimentStyles(details[activeTab].signal))}>
                         <div className="flex justify-between items-start mb-6">
                             <h3 className="text-xl font-semibold capitalize">{activeTab} Analysis</h3>
-                            <span className={clsx("px-3 py-1 rounded-full text-xs font-semibold bg-secondary", getSignalColor(details[activeTab].signal))}>
+                            <span className={clsx("px-3 py-1 rounded-full text-xs font-bold border",
+                                details[activeTab].signal === 'Bullish' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                                    details[activeTab].signal === 'Bearish' ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
+                                        "bg-amber-500/10 text-amber-400 border-amber-500/20")}>
                                 {details[activeTab].signal}
                             </span>
                         </div>
 
                         <div className="space-y-6">
                             <div>
-                                <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Reasoning</h4>
-                                <div className="bg-secondary/20 p-5 rounded-lg text-lg leading-relaxed whitespace-pre-line font-serif">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Reasoning</h4>
+                                <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg text-lg leading-relaxed text-slate-400 whitespace-pre-line font-serif shadow-inner">
                                     {details[activeTab].reasoning || details[activeTab].summary || "No detailed reasoning provided."}
                                 </div>
                             </div>
@@ -613,9 +636,9 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                     <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-3">Key Metrics</h4>
                                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                         {Object.entries(details[activeTab].metrics).map(([key, value]) => (
-                                            <div key={key} className="p-4 bg-secondary/10 rounded-lg border border-border/30">
-                                                <div className="text-base text-muted-foreground capitalize">{key.replace(/_/g, ' ')}</div>
-                                                <div className="font-mono text-xl font-medium mt-1">{String(value)}</div>
+                                            <div key={key} className="p-4 bg-slate-900 border border-slate-800 rounded-lg hover:border-slate-700 transition-colors group">
+                                                <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 group-hover:text-slate-400" title={key.replace(/_/g, ' ')}>{key.replace(/_/g, ' ')}</div>
+                                                <div className="font-mono text-xl font-medium text-slate-200 group-hover:text-white">{String(value)}</div>
                                             </div>
                                         ))}
                                     </div>
@@ -623,11 +646,14 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                             )}
                             {/* Specific rendering for Management Risks if mostly standard but has extra list */}
                             {activeTab === 'management' && details.management.risks && (
-                                <div className="mt-4">
-                                    <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-2">Identified Risks</h4>
-                                    <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                                <div className="mt-6 border-t border-slate-800 pt-6">
+                                    <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Identified Risks</h4>
+                                    <ul className="space-y-3">
                                         {details.management.risks.map((r: string, i: number) => (
-                                            <li key={i}>{r}</li>
+                                            <li key={i} className="flex items-start gap-3 text-slate-400 text-sm leading-relaxed">
+                                                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-rose-500/50 shrink-0"></span>
+                                                {r}
+                                            </li>
                                         ))}
                                     </ul>
                                 </div>
