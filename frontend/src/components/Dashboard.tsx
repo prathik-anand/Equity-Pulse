@@ -418,13 +418,13 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                         {/* Support/Resistance */}
                         <div className="p-6 rounded-xl bg-secondary/5 border border-border/30 relative mt-4">
                             <h4 className="text-sm font-semibold uppercase text-muted-foreground mb-6">Key Levels</h4>
-                            <div className="relative h-12 w-full flex items-center">
+                            <div className="relative h-20 w-full flex items-center mt-8">
                                 {/* Base Line */}
                                 <div className="absolute w-full h-1 bg-slate-800 rounded-full"></div>
 
                                 {/* Support Marker */}
                                 {details.technical.metrics.support_level && (
-                                    <div className="absolute flex flex-col items-center" style={{ left: '20%' }}>
+                                    <div className="absolute flex flex-col items-center top-1/2 mt-2" style={{ left: '20%', transform: 'translateX(-50%)' }}>
                                         <div className="w-2 h-2 bg-green-500 rounded-full mb-1"></div>
                                         <div className="text-xs text-green-500 font-mono">${details.technical.metrics.support_level}</div>
                                         <div className="text-[10px] text-muted-foreground uppercase mt-1">Support</div>
@@ -432,15 +432,20 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                 )}
 
                                 {/* Price Marker */}
-                                <div className="absolute flex flex-col items-center z-10" style={{ left: '50%' }}>
-                                    <div className="w-4 h-4 bg-white rounded-full border-4 border-slate-900 mb-1 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
+                                <div className="absolute flex flex-col-reverse items-center z-10 bottom-1/2 mb-2" style={{
+                                    left: `${details.technical.metrics.support_level && details.technical.metrics.resistance_level
+                                        ? Math.max(0, Math.min(100, 20 + ((details.technical.metrics.current_price - details.technical.metrics.support_level) / (details.technical.metrics.resistance_level - details.technical.metrics.support_level)) * 60))
+                                        : 50}%`,
+                                    transform: 'translateX(-50%)'
+                                }}>
+                                    <div className="w-4 h-4 bg-white rounded-full border-4 border-slate-900 mt-1 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
                                     <div className="text-sm font-bold font-mono">${details.technical.metrics.current_price}</div>
-                                    <div className="text-[10px] text-muted-foreground uppercase mt-1">Current</div>
+                                    <div className="text-[10px] text-muted-foreground uppercase mb-1">Current</div>
                                 </div>
 
                                 {/* Resistance Marker */}
                                 {details.technical.metrics.resistance_level && (
-                                    <div className="absolute flex flex-col items-center" style={{ left: '80%' }}>
+                                    <div className="absolute flex flex-col items-center top-1/2 mt-2" style={{ left: '80%', transform: 'translateX(-50%)' }}>
                                         <div className="w-2 h-2 bg-red-500 rounded-full mb-1"></div>
                                         <div className="text-xs text-red-500 font-mono">${details.technical.metrics.resistance_level}</div>
                                         <div className="text-[10px] text-muted-foreground uppercase mt-1">Resistance</div>
