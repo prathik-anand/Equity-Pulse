@@ -1,8 +1,9 @@
+
 import React, { useEffect, useState } from 'react';
 import { getAnalysisResult } from '../api';
 import { motion } from 'framer-motion';
-import { Activity, BarChart3, TrendingUp, Users, AlertCircle, CheckCircle2, FileText, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
+import { ArrowLeft, FileText, Activity, BarChart3, TrendingUp, Users, AlertCircle, CheckCircle2, Loader2, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, PieChart, Pie, Cell } from 'recharts';
 import clsx from 'clsx';
 import LogViewer from './LogViewer';
 
@@ -104,6 +105,42 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
             return "bg-slate-950/50 border-l-4 border-l-rose-500 border-y border-r border-slate-800/50";
 
         return "bg-slate-950/50 border-l-4 border-l-amber-500 border-y border-r border-slate-800/50";
+    };
+
+    const getBadgeStyles = (signal: string) => {
+        if (!signal) return "bg-gray-500/10 text-gray-400 border-gray-500/20";
+        const s = String(signal).toUpperCase();
+
+        if (s === 'BUY' || s === 'BULLISH' || s === 'STRONG' || s === 'ACCELERATING' || s === 'UNDERVALUED')
+            return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]";
+
+        if (s === 'SELL' || s === 'BEARISH' || s === 'WEAK' || s === 'STAGNANT' || s === 'OVERVALUED')
+            return "bg-rose-500/10 text-rose-400 border-rose-500/20 shadow-[0_0_10px_rgba(244,63,94,0.1)]";
+
+        return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+    };
+
+    const getRadarData = (details: any) => {
+        if (!details || !details.fundamental || !details.fundamental.details) return [];
+
+        const d = details.fundamental.details;
+        const score = (val: string) => {
+            const v = (val || '').toLowerCase();
+            if (v.includes('strong') || v.includes('accelerating') || v.includes('undervalued')) return 90;
+            if (v.includes('stable') || v.includes('fair')) return 70;
+            if (v.includes('weak') || v.includes('slowing') || v.includes('overvalued')) return 40;
+            return 60; // Default
+        };
+
+        const profitMargin = parseFloat(d.profit_margin) || 0;
+
+        return [
+            { subject: 'Health', A: score(d.financial_health), fullMark: 100 },
+            { subject: 'Growth', A: score(d.growth_trajectory), fullMark: 100 },
+            { subject: 'Value', A: score(d.valuation), fullMark: 100 },
+            { subject: 'Moat', A: profitMargin > 20 ? 85 : profitMargin > 10 ? 65 : 40, fullMark: 100 },
+            { subject: 'Safety', A: (parseFloat(d.debt_to_equity) || 0) < 0.5 ? 90 : (parseFloat(d.debt_to_equity) || 0) < 1.0 ? 65 : 40, fullMark: 100 },
+        ];
     };
 
     const tabs = [
@@ -389,7 +426,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                     </div>
                                     <div
                                         className="h-full w-1 bg-white absolute top-0"
-                                        style={{ left: `${Math.min(Math.max(details.technical.metrics.rsi || 50, 0), 100)}%` }}
+                                        style={{ left: `${Math.min(Math.max(details.technical.metrics.rsi || 50, 0), 100)}% ` }}
                                     ></div>
                                 </div>
                             </div>
@@ -455,7 +492,8 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                 <div className="absolute flex flex-col-reverse items-center z-10 bottom-1/2 mb-2" style={{
                                     left: `${details.technical.metrics.support_level && details.technical.metrics.resistance_level
                                         ? Math.max(0, Math.min(100, 20 + ((details.technical.metrics.current_price - details.technical.metrics.support_level) / (details.technical.metrics.resistance_level - details.technical.metrics.support_level)) * 60))
-                                        : 50}%`,
+                                        : 50
+                                        }% `,
                                     transform: 'translateX(-50%)'
                                 }}>
                                     <div className="w-4 h-4 bg-white rounded-full border-4 border-slate-900 mt-1 shadow-[0_0_10px_rgba(255,255,255,0.5)]"></div>
@@ -479,50 +517,30 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                 {/* FUNDAMENTAL TAB SPECIFIC RENDERER */}
                 {activeTab === 'fundamental' && details?.fundamental && (
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            <div className={clsx("md:col-span-2 p-6 rounded-xl shadow-sm flex flex-col transition-all", getSentimentStyles(details.fundamental.signal))}>
-                                <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-indigo-400">
-                                    <BarChart3 className={clsx("w-5 h-5", getSignalColor(details.fundamental.signal))} />
-                                    Fundamental Analysis
-                                </h3>
-                                <div className="bg-slate-900/50 border border-white/5 p-5 rounded-lg text-lg leading-relaxed text-slate-300 whitespace-pre-line font-serif">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className={clsx("lg:col-span-2 p-6 rounded-xl shadow-sm flex flex-col transition-all", getSentimentStyles(details.fundamental.signal))}>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xl font-bold flex items-center gap-2 text-indigo-400">
+                                        <BarChart3 className={clsx("w-5 h-5", getSignalColor(details.fundamental.signal))} />
+                                        Fundamental Analysis
+                                    </h3>
+                                    <span className={clsx("px-3 py-1 rounded-full text-xs font-bold border", getBadgeStyles(details.fundamental.signal))}>
+                                        {details.fundamental.signal}
+                                    </span>
+                                </div>
+                                <div className="bg-slate-900/50 border border-slate-800/50 p-5 rounded-lg text-lg leading-relaxed text-slate-400 whitespace-pre-line font-serif shadow-inner">
                                     {details.fundamental.reasoning}
                                 </div>
                             </div>
 
                             {/* RADAR CHART & STATUS CARD */}
-                            <div className="p-6 rounded-xl bg-card border border-border/50 flex flex-col justify-between">
-                                <div className="h-64 w-full -ml-4">
+                            <div className="lg:col-span-1 p-6 rounded-xl bg-slate-950/50 border border-slate-800/50 flex flex-col justify-between">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 text-center">Quality Profile</h4>
+                                <div className="h-64 w-full relative">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={[
-                                            {
-                                                subject: 'Health',
-                                                A: details.fundamental.details.financial_health === 'Strong' ? 100 : details.fundamental.details.financial_health === 'Stable' ? 70 : 40,
-                                                fullMark: 100,
-                                            },
-                                            {
-                                                subject: 'Growth',
-                                                A: details.fundamental.details.growth_trajectory === 'Accelerating' ? 100 : details.fundamental.details.growth_trajectory === 'Stagnant' ? 50 : 30,
-                                                fullMark: 100,
-                                            },
-                                            {
-                                                subject: 'Value',
-                                                A: details.fundamental.details.valuation === 'Undervalued' ? 100 : details.fundamental.details.valuation === 'Fair' ? 70 : 40,
-                                                fullMark: 100,
-                                            },
-                                            {
-                                                subject: 'Moat',
-                                                A: details.fundamental.details.financial_health === 'Strong' ? 90 : 60, // Proxy derived
-                                                fullMark: 100,
-                                            },
-                                            {
-                                                subject: 'Safety',
-                                                A: details.fundamental.details.debt_to_equity && details.fundamental.details.debt_to_equity < 50 ? 90 : 60,
-                                                fullMark: 100,
-                                            }
-                                        ]}>
+                                        <RadarChart cx="50%" cy="50%" outerRadius="80%" data={getRadarData(details)}>
                                             <PolarGrid stroke="#334155" />
-                                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 12 }} />
+                                            <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10 }} />
                                             <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                                             <Radar
                                                 name="Fundamentals"
@@ -536,24 +554,18 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                     </ResponsiveContainer>
                                 </div>
 
-                                <div className="space-y-3 mt-2">
-                                    <div className="flex justify-between items-center px-2">
-                                        <span className="text-sm text-muted-foreground">Health</span>
-                                        <span className={clsx("font-bold text-sm", details.fundamental.details.financial_health === 'Strong' ? "text-green-500" : "text-yellow-500")}>
-                                            {details.fundamental.details.financial_health}
-                                        </span>
+                                <div className="space-y-3 mt-4 px-2">
+                                    <div className="flex justify-between items-center text-sm border-b border-slate-800 pb-2">
+                                        <span className="text-slate-500">Health</span>
+                                        <span className={clsx("font-bold", details.fundamental.details.financial_health === 'Strong' ? "text-emerald-400" : "text-amber-400")}>{details.fundamental.details.financial_health}</span>
                                     </div>
-                                    <div className="flex justify-between items-center px-2">
-                                        <span className="text-sm text-muted-foreground">Growth</span>
-                                        <span className={clsx("font-bold text-sm", details.fundamental.details.growth_trajectory === 'Accelerating' ? "text-green-500" : "text-yellow-500")}>
-                                            {details.fundamental.details.growth_trajectory}
-                                        </span>
+                                    <div className="flex justify-between items-center text-sm border-b border-slate-800 pb-2">
+                                        <span className="text-slate-500">Growth</span>
+                                        <span className={clsx("font-bold", details.fundamental.details.growth_trajectory === 'Accelerating' ? "text-emerald-400" : "text-amber-400")}>{details.fundamental.details.growth_trajectory}</span>
                                     </div>
-                                    <div className="flex justify-between items-center px-2">
-                                        <span className="text-sm text-muted-foreground">Valuation</span>
-                                        <span className={clsx("font-bold text-sm", details.fundamental.details.valuation === 'Undervalued' ? "text-green-500" : details.fundamental.details.valuation === 'Fair' ? "text-yellow-500" : "text-red-500")}>
-                                            {details.fundamental.details.valuation}
-                                        </span>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500">Valuation</span>
+                                        <span className={clsx("font-bold", details.fundamental.details.valuation === 'Undervalued' ? "text-emerald-400" : details.fundamental.details.valuation === 'Fair' ? "text-amber-400" : "text-rose-400")}>{details.fundamental.details.valuation}</span>
                                     </div>
                                 </div>
                             </div>
@@ -590,19 +602,19 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                             <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
                                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Rev Growth</div>
                                 <div className="text-lg font-mono font-bold text-green-400 mt-1">
-                                    {details.fundamental.details.revenue_growth ? `${details.fundamental.details.revenue_growth}%` : "N/A"}
+                                    {details.fundamental.details.revenue_growth ? `${details.fundamental.details.revenue_growth}% ` : "N/A"}
                                 </div>
                             </div>
                             <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
                                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Profit Margin</div>
                                 <div className="text-lg font-mono font-bold text-green-400 mt-1">
-                                    {details.fundamental.details.profit_margin ? `${details.fundamental.details.profit_margin}%` : "N/A"}
+                                    {details.fundamental.details.profit_margin ? `${details.fundamental.details.profit_margin}% ` : "N/A"}
                                 </div>
                             </div>
                             <div className="p-3 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors">
                                 <div className="text-[10px] text-muted-foreground uppercase tracking-wider">Div Yield</div>
                                 <div className="text-lg font-mono font-bold text-green-400 mt-1">
-                                    {details.fundamental.details.dividend_yield ? `${details.fundamental.details.dividend_yield}%` : "N/A"}
+                                    {details.fundamental.details.dividend_yield ? `${details.fundamental.details.dividend_yield}% ` : "N/A"}
                                 </div>
                             </div>
                         </div>
@@ -614,11 +626,8 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                 {activeTab !== 'summary' && activeTab !== 'logs' && activeTab !== 'quant' && activeTab !== 'risk' && activeTab !== 'technical' && activeTab !== 'fundamental' && details && details[activeTab] && (
                     <motion.div initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className={clsx("p-6 rounded-xl border shadow-sm transition-all", getSentimentStyles(details[activeTab].signal))}>
                         <div className="flex justify-between items-start mb-6">
-                            <h3 className="text-xl font-semibold capitalize">{activeTab} Analysis</h3>
-                            <span className={clsx("px-3 py-1 rounded-full text-xs font-bold border",
-                                details[activeTab].signal === 'Bullish' ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                                    details[activeTab].signal === 'Bearish' ? "bg-rose-500/10 text-rose-400 border-rose-500/20" :
-                                        "bg-amber-500/10 text-amber-400 border-amber-500/20")}>
+                            <h3 className="text-xl font-bold capitalize text-indigo-400">{activeTab} Analysis</h3>
+                            <span className={clsx("px-3 py-1 rounded-full text-xs font-bold border", getBadgeStyles(details[activeTab].signal))}>
                                 {details[activeTab].signal}
                             </span>
                         </div>
@@ -633,14 +642,30 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                             {details[activeTab].metrics && (
                                 <div>
-                                    <h4 className="text-lg font-medium text-muted-foreground uppercase tracking-wider mb-3">Key Metrics</h4>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                        {Object.entries(details[activeTab].metrics).map(([key, value]) => (
-                                            <div key={key} className="p-4 bg-slate-900 border border-slate-800 rounded-lg hover:border-slate-700 transition-colors group">
-                                                <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2 group-hover:text-slate-400" title={key.replace(/_/g, ' ')}>{key.replace(/_/g, ' ')}</div>
-                                                <div className="font-mono text-xl font-medium text-slate-200 group-hover:text-white">{String(value)}</div>
-                                            </div>
-                                        ))}
+                                    <h4 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                                        <Activity className="w-4 h-4" />
+                                        Key Metrics
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {Object.entries(details[activeTab].metrics).map(([key, value]) => {
+                                            const isLongText = String(value).length > 20;
+                                            const isNumber = /^\d/.test(String(value));
+
+                                            return (
+                                                <div key={key} className="p-5 bg-slate-900/40 border border-slate-800/60 rounded-xl hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all duration-300 group">
+                                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 group-hover:text-indigo-400 transition-colors">
+                                                        {key.replace(/_/g, ' ')}
+                                                    </div>
+                                                    <div className={clsx(
+                                                        "text-slate-200 leading-relaxed",
+                                                        isNumber ? "font-mono text-xl font-medium" : "font-sans text-base font-normal text-slate-300",
+                                                        isLongText ? "text-sm" : ""
+                                                    )}>
+                                                        {String(value)}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
