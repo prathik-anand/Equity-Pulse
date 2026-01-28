@@ -31,6 +31,7 @@ class FundamentalDetails(BaseModel):
     debt_to_equity: Optional[float] = Field(None, description="Debt to Equity Ratio")
     revenue_growth: Optional[float] = Field(None, description="YoY Revenue Growth %")
     profit_margin: Optional[float] = Field(None, description="Net Profit Margin %")
+    dividend_yield: Optional[float] = Field(None, description="Dividend Yield %")
 
 class FundamentalAnalysis(BaseModel):
     signal: Literal["BUY", "SELL", "HOLD"] = Field(..., description="Final investment signal based on fundamentals")

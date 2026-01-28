@@ -26,7 +26,7 @@ You don't care about next quarter's earnings. You care about the next 10 years.
 - Disdain for "hype" and "adjusted EBITDA".
 
 **CRITICAL INSTRUCTION: DATA EXTRACTION**
-- EXTRACT and POPULATE specific fields: `pe_ratio`, `pb_ratio`, `peg_ratio`, `debt_to_equity`, `revenue_growth`, `profit_margin`.
+- EXTRACT and POPULATE specific fields: `pe_ratio`, `pb_ratio`, `peg_ratio`, `debt_to_equity`, `revenue_growth`, `profit_margin`, `dividend_yield`.
 - If a value is missing in tools, make a reasonable estimate based on context or leave None.
 - `metrics` dict is deprecated; put numbers in the top-level fields of `details`.
 

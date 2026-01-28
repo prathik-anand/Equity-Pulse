@@ -579,6 +579,12 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                     {details.fundamental.details.profit_margin ? `${details.fundamental.details.profit_margin}%` : "N/A"}
                                 </div>
                             </div>
+                            <div className="p-3 bg-secondary/10 rounded-lg border border-border/30">
+                                <div className="text-[10px] text-muted-foreground uppercase">Div Yield</div>
+                                <div className="text-lg font-mono font-bold text-green-400">
+                                    {details.fundamental.details.dividend_yield ? `${details.fundamental.details.dividend_yield}%` : "N/A"}
+                                </div>
+                            </div>
                         </div>
 
                     </motion.div>

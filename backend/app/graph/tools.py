@@ -270,31 +270,51 @@ def get_valuation_ratios(ticker: str) -> str:
     try:
         stock = yf.Ticker(ticker)
         info = stock.info
+        # Helper to safely get and normalize percentage values that YF returns as 0-100
+        debt_to_equity = info.get("debtToEquity")
+        if debt_to_equity is not None:
+             # YF returns Debt/Eq as percentage (e.g. 9.1 for 9.1%), convert to ratio (0.091)
+            debt_to_equity = round(debt_to_equity / 100.0, 4)
+
+        peg_ratio = info.get("pegRatio")
+        if peg_ratio is None:
+            peg_ratio = info.get("trailingPegRatio")
+
+        dividend_yield = info.get("dividendYield")
+        if dividend_yield is not None:
+             # YF returns Dividend Yield as percentage number (e.g. 7.02 for 7.02%)
+             # We want to keep it as percentage number for consistency with other % metrics
+             pass
+
+        # Helper to convert decimal to percentage
+        def to_pct(val):
+            return round(val * 100.0, 2) if val is not None else None
+
         metrics = {
             "valuation": {
                 "pe_ratio": info.get("trailingPE"),
                 "forward_pe": info.get("forwardPE"),
-                "peg_ratio": info.get("pegRatio"),
+                "peg_ratio": peg_ratio,
                 "price_to_book": info.get("priceToBook"),
                 "price_to_sales": info.get("priceToSalesTrailing12Months"),
                 "enterprise_to_ebitda": info.get("enterpriseToEbitda"),
             },
             "profitability": {
-                "roe": info.get("returnOnEquity"),
-                "roa": info.get("returnOnAssets"),
-                "gross_margins": info.get("grossMargins"),
-                "operating_margins": info.get("operatingMargins"),
-                "profit_margins": info.get("profitMargins"),
+                "roe": to_pct(info.get("returnOnEquity")),
+                "roa": to_pct(info.get("returnOnAssets")),
+                "gross_margins": to_pct(info.get("grossMargins")),
+                "operating_margins": to_pct(info.get("operatingMargins")),
+                "profit_margins": to_pct(info.get("profitMargins")),
             },
             "financial_health": {
                 "current_ratio": info.get("currentRatio"),
                 "quick_ratio": info.get("quickRatio"),
-                "debt_to_equity": info.get("debtToEquity"),
+                "debt_to_equity": debt_to_equity,
                 "free_cashflow": info.get("freeCashflow"),
             },
             "dividends": {
-                "yield": info.get("dividendYield"),
-                "payout_ratio": info.get("payoutRatio"),
+                "yield": dividend_yield,
+                "payout_ratio": to_pct(info.get("payoutRatio")),
             }
         }
         import json
