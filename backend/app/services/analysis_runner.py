@@ -34,7 +34,7 @@ async def run_analysis_workflow(session_id: str, ticker: str):
             final_state = await graph_app.ainvoke(initial_state)
             
             # 3. Update DB with results
-            result = await db.execute(select(AnalysisSession).where(AnalysisSession.session_id == session_id))
+            result = await db.execute(select(AnalysisSession).where(AnalysisSession.id == session_id))
             session_obj = result.scalar_one_or_none()
             
             if session_obj:
@@ -53,7 +53,7 @@ async def run_analysis_workflow(session_id: str, ticker: str):
             # Fetch session again to update error state
             # (In a real app, handle transaction rollback carefully)
             try:
-                result = await db.execute(select(AnalysisSession).where(AnalysisSession.session_id == session_id))
+                result = await db.execute(select(AnalysisSession).where(AnalysisSession.id == session_id))
                 session_obj = result.scalar_one_or_none()
                 if session_obj:
                     session_obj.status = "failed"

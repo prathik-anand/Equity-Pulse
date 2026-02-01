@@ -7,7 +7,8 @@ from app.models.base import Base
 class AnalysisSession(Base):
     __tablename__ = "analysis_sessions"
 
-    session_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_session_id = Column(String, index=True, nullable=True)
     ticker = Column(String, index=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     status = Column(String, default="processing") # processing, completed, failed

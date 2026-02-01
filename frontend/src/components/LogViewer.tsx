@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Maximize2, Minimize2, ArrowDownCircle } from 'lucide-react';
 import clsx from 'clsx';
+import { API_BASE_URL } from '../api';
 
 interface LogViewerProps {
     sessionId: string;
@@ -34,7 +35,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isPr
         if (!isProcessing) return;
 
         console.log("Connecting to EventSource...");
-        const eventSource = new EventSource(`http://localhost:8000/api/v1/analysis/${sessionId}/stream`);
+        const eventSource = new EventSource(`${API_BASE_URL}/analysis/${sessionId}/stream`);
 
         eventSource.onopen = () => {
             console.log("EventSource connected.");

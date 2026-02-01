@@ -10,8 +10,10 @@ interface SearchProps {
 }
 
 interface Ticker {
-    symbol: string;
-    name: string;
+    ticker: string;
+    company_name: string;
+    sector: string;
+    exchange: string;
 }
 
 const CACHE_KEY = 'equitypulse_tickers';
@@ -55,8 +57,8 @@ const Search: React.FC<SearchProps> = ({ onSearch, loading }) => {
         }
         const lowerQuery = query.toLowerCase();
         const filtered = tickers.filter(t =>
-            t.symbol.toLowerCase().includes(lowerQuery) ||
-            t.name.toLowerCase().includes(lowerQuery)
+            (t.ticker ?? '').toLowerCase().includes(lowerQuery) ||
+            (t.company_name ?? '').toLowerCase().includes(lowerQuery)
         ).slice(0, 5); // Limit to 5 suggestions
         setSuggestions(filtered);
     }, [query, tickers]);
@@ -81,8 +83,8 @@ const Search: React.FC<SearchProps> = ({ onSearch, loading }) => {
     };
 
     const handleSelect = (ticker: Ticker) => {
-        setQuery(ticker.symbol);
-        onSearch(ticker.symbol);
+        setQuery(ticker.ticker);
+        onSearch(ticker.ticker);
         setShowSuggestions(false);
     };
 
@@ -141,15 +143,15 @@ const Search: React.FC<SearchProps> = ({ onSearch, loading }) => {
                             >
                                 {suggestions.map((ticker) => (
                                     <div
-                                        key={ticker.symbol}
+                                        key={ticker.ticker}
                                         className="flex items-center justify-between px-5 py-3 hover:bg-white/5 cursor-pointer transition-colors border-b border-white/5 last:border-0"
                                         onClick={() => handleSelect(ticker)}
                                     >
                                         <div className="flex flex-col text-left">
-                                            <span className="font-bold text-foreground">{ticker.symbol}</span>
-                                            <span className="text-xs text-muted-foreground">{ticker.name}</span>
+                                            <span className="font-bold text-foreground">{ticker.ticker}</span>
+                                            <span className="text-xs text-muted-foreground">{ticker.company_name} • {ticker.sector}</span>
                                         </div>
-                                        <span className="text-xs text-muted-foreground px-2 py-1 bg-secondary rounded-md">Stock</span>
+                                        <span className="text-xs text-muted-foreground px-2 py-1 bg-secondary rounded-md">{ticker.exchange}</span>
                                     </div>
                                 ))}
                             </motion.div>

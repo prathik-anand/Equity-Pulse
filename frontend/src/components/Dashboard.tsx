@@ -35,7 +35,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
         };
 
         fetchData();
-        interval = setInterval(fetchData, 15000); // Poll every 15s
+        interval = setInterval(fetchData, 3000); // Poll every 3s
 
         return () => clearInterval(interval);
     }, [sessionId]);

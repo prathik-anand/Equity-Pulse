@@ -19,4 +19,4 @@ async def get_supported_tickers():
             return json.load(f)
             
     # Fallback if file missing
-    return [{"symbol": "AAPL", "name": "Apple Inc."}]
+    return [{"ticker": "AAPL", "company_name": "Apple Inc.", "sector": "Information Technology", "exchange": "NASDAQ"}]
