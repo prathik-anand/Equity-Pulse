@@ -54,12 +54,19 @@ async def trigger_analysis(
 async def get_analysis_result(id: UUID, db: SessionDep):
     """
     Get the status and result of an analysis session.
+    Returns live logs from memory during processing, or DB logs when completed.
     """
     result = await db.execute(select(AnalysisSession).where(AnalysisSession.id == id))
     session = result.scalar_one_or_none()
     
     if not session:
         raise HTTPException(status_code=404, detail="Analysis session not found")
+    
+    # Get logs: from memory if processing, from DB if completed
+    if session.status == "processing":
+        logs = stream_manager.get_logs(str(session.id))
+    else:
+        logs = session.logs or []
         
     return {
         "id": session.id,
@@ -68,7 +75,7 @@ async def get_analysis_result(id: UUID, db: SessionDep):
         "created_at": session.created_at,
         "summary": session.summary,
         "report": session.report_data,
-        "logs": session.logs
+        "logs": logs
     }
 
 @router.get("/analysis/{id}/stream")

@@ -10,13 +10,18 @@ class LogStreamManager:
         if cls._instance is None:
             cls._instance = super(LogStreamManager, cls).__new__(cls)
             cls._instance.active_streams = defaultdict(list)
+            cls._instance.log_history = defaultdict(list)  # Store all logs per session
             cls._instance.logger = logging.getLogger("LogStreamManager")
         return cls._instance
 
     async def broadcast(self, session_id: str, message: str):
         """
         Push a message to all active queues for the given session_id.
+        Also store the message in log_history for later retrieval.
         """
+        # Store in history
+        self.log_history[session_id].append(message)
+        
         if session_id in self.active_streams:
             # We copy the list to avoid modification issues during iteration if a client disconnects
             # though disconnect usually happens in the get_stream loop.
@@ -26,6 +31,19 @@ class LogStreamManager:
                     await q.put(message)
                 except Exception as e:
                     self.logger.error(f"Failed to put message in queue for session {session_id}: {e}")
+
+    def get_logs(self, session_id: str) -> list:
+        """
+        Get all stored logs for a session.
+        """
+        return self.log_history.get(session_id, [])
+
+    def clear_logs(self, session_id: str):
+        """
+        Clear logs for a session (call when analysis is complete and saved to DB).
+        """
+        if session_id in self.log_history:
+            del self.log_history[session_id]
 
     async def get_stream(self, session_id: str) -> AsyncGenerator[str, None]:
         """

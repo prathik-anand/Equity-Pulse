@@ -16,18 +16,19 @@ const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isPr
     const [autoScroll, setAutoScroll] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Sync initialLogs when they update (e.g. from polling fallback or re-renders)
+    // Sync initialLogs when they update (e.g. from polling or switching reports)
     useEffect(() => {
-        if (initialLogs.length > logs.length) {
-            // Avoid duplicate logs if we are already streaming, 
-            // but if initialLogs comes from DB (historical) and we have more there, sync it.
-            // Simple approach: merge unique or just allow append if streaming is not active.
-            // For simplicity, if we are not processing, we fully trust initialLogs.
-            if (!isProcessing) {
-                setLogs(initialLogs);
-            }
+        if (initialLogs.length > 0) {
+            // If initialLogs has more than our current logs, use them as base
+            // This handles the case when user switches back to a processing report
+            setLogs(prev => {
+                // Deduplicate: keep initialLogs as base, then append any new SSE logs not in initialLogs
+                const initialSet = new Set(initialLogs);
+                const newFromSSE = prev.filter(log => !initialSet.has(log));
+                return [...initialLogs, ...newFromSSE];
+            });
         }
-    }, [initialLogs, isProcessing]);
+    }, [initialLogs]);
 
 
     // SSE Connection

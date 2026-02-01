@@ -54,7 +54,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
                 {/* Live Scratchpad */}
                 <div className="w-full">
-                    <LogViewer sessionId={sessionId} isProcessing={true} />
+                    <LogViewer sessionId={sessionId} initialLogs={data?.logs || []} isProcessing={true} />
                 </div>
             </div>
         );

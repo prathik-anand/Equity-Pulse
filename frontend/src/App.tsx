@@ -24,6 +24,7 @@ const formatRelativeTime = (dateString: string): string => {
 function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [history, setHistory] = useState<any[]>([]);
 
   // Initialize User Session ID (Lazy Initialization)
@@ -40,11 +41,14 @@ function App() {
   // Fetch history logic
   const fetchHistory = async () => {
     if (userSessionId) {
+      setHistoryLoading(true);
       try {
         const hist = await import('./api').then(m => m.getUserHistory(userSessionId));
         setHistory(hist);
       } catch (e) {
         console.error("Failed to load history", e);
+      } finally {
+        setHistoryLoading(false);
       }
     }
   };
@@ -97,7 +101,11 @@ function App() {
         <div className="flex-1 flex flex-col min-h-0 p-3">
           <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">History</h3>
           <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
-            {history.length === 0 ? (
+            {historyLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <span className="text-xs text-muted-foreground animate-pulse">Loading...</span>
+              </div>
+            ) : history.length === 0 ? (
               <p className="text-xs text-muted-foreground px-1">No past reports.</p>
             ) : (
               history.map((item) => (

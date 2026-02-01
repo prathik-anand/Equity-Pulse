@@ -41,12 +41,15 @@ async def run_analysis_workflow(session_id: str, ticker: str):
                 session_obj.status = "completed"
                 session_obj.report_data = final_state.get("final_report", {})
                 session_obj.summary = final_state.get("final_report", {}).get("summary", "")
-                session_obj.logs = final_state.get("logs", [])
-                await db.commit()
+                # Get logs from stream_manager (they're stored there during analysis)
+                session_obj.logs = stream_manager.get_logs(session_id)
                 await db.commit()
                 # Notify stream of completion
                 await stream_manager.broadcast(session_id, "STATUS: COMPLETED")
+                # Clear logs from memory after saving to DB
+                stream_manager.clear_logs(session_id)
                 print(f"Analysis completed for {ticker}")
+                
                 
         except Exception as e:
             print(f"Error in analysis workflow: {str(e)}")
