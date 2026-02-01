@@ -155,7 +155,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
     ];
 
     return (
-        <div className="w-full max-w-5xl mx-auto p-4 pb-20">
+        <div className="w-full max-w-6xl mx-auto px-4 pb-20">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mb-8">
                 <button onClick={onBack} className="text-sm text-muted-foreground hover:text-foreground mb-4">
                     &larr; Analyze Another

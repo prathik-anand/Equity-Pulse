@@ -77,59 +77,66 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/20 flex">
+    <div className="min-h-screen h-screen bg-background text-foreground font-sans selection:bg-primary/20 flex overflow-hidden">
       <div className="fixed inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 pointer-events-none"></div>
 
-      {/* Sidebar History */}
-      <aside className="w-64 border-r border-border/40 bg-card/30 backdrop-blur-sm p-4 hidden md:flex flex-col z-20">
-        <h2 className="text-lg font-bold mb-4 px-2">History</h2>
-        <div className="flex-1 overflow-y-auto space-y-2">
-          {history.length === 0 ? (
-            <p className="text-sm text-muted-foreground px-2">No past reports.</p>
-          ) : (
-            history.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setSessionId(item.id)}
-                className={`w-full text-left p-3 rounded-lg text-sm transition-colors ${sessionId === item.id
-                  ? 'bg-primary/10 text-primary font-medium'
-                  : 'hover:bg-accent text-muted-foreground hover:text-foreground'
-                  }`}
-              >
-                <div className="flex justify-between items-center mb-1">
-                  <span className="uppercase font-bold">{item.ticker}</span>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${item.status === 'completed' ? 'bg-green-500/10 text-green-500' :
-                    item.status === 'failed' ? 'bg-red-500/10 text-red-500' :
-                      'bg-yellow-500/10 text-yellow-500'
-                    }`}>{item.status}</span>
-                </div>
-                <div className="text-xs opacity-60">
-                  {formatRelativeTime(item.created_at)}
-                </div>
-              </button>
-            ))
-          )}
+      {/* Sidebar with Logo + History */}
+      <aside className="w-56 border-r border-border/40 bg-card/30 backdrop-blur-sm hidden md:flex flex-col z-20 flex-shrink-0">
+        {/* Logo */}
+        <div className="p-4 border-b border-border/40">
+          <div
+            className="font-bold text-xl tracking-tighter cursor-pointer bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500"
+            onClick={handleBack}
+          >
+            EquityPulse
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">AI Investment Research</p>
+        </div>
+
+        {/* History */}
+        <div className="flex-1 flex flex-col min-h-0 p-3">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-1">History</h3>
+          <div className="flex-1 overflow-y-auto space-y-1.5 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+            {history.length === 0 ? (
+              <p className="text-xs text-muted-foreground px-1">No past reports.</p>
+            ) : (
+              history.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setSessionId(item.id)}
+                  className={`w-full text-left p-2.5 rounded-lg text-sm transition-all ${sessionId === item.id
+                    ? 'bg-primary/10 text-primary font-medium border border-primary/20'
+                    : 'hover:bg-accent/50 text-muted-foreground hover:text-foreground'
+                    }`}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="uppercase font-bold text-xs">{item.ticker}</span>
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded-full ${item.status === 'completed' ? 'bg-green-500/10 text-green-500' :
+                      item.status === 'failed' ? 'bg-red-500/10 text-red-500' :
+                        'bg-yellow-500/10 text-yellow-500'
+                      }`}>{item.status}</span>
+                  </div>
+                  <div className="text-[10px] opacity-50 mt-0.5">
+                    {formatRelativeTime(item.created_at)}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
         </div>
       </aside>
 
-      <main className="relative z-10 flex-1 container mx-auto px-4 py-8 overflow-y-auto h-screen">
-        <header className="flex justify-between items-center py-4 mb-8">
-          <div className="font-bold text-xl tracking-tighter cursor-pointer" onClick={handleBack}>EquityPulse</div>
-          <nav className="text-sm text-muted-foreground gap-4 flex">
-            <span className="text-xs px-2 py-1 bg-secondary/50 rounded text-muted-foreground">Session: {userSessionId?.slice(0, 8)}...</span>
-          </nav>
-        </header>
-
-        {!sessionId ? (
-          <div className="max-w-2xl mx-auto mt-20">
-            <h1 className="text-4xl font-bold text-center mb-8 tracking-tight">
-              AI-Powered <span className="text-primary">Investment Research</span>
-            </h1>
-            <Search onSearch={handleSearch} loading={loading} />
-          </div>
-        ) : (
-          <Dashboard sessionId={sessionId} onBack={handleBack} />
-        )}
+      {/* Main Content - Full Width */}
+      <main className="relative z-10 flex-1 overflow-y-auto h-screen">
+        <div className="w-full max-w-7xl mx-auto px-6 py-6">
+          {!sessionId ? (
+            <div className="flex flex-col items-center justify-center min-h-[80vh]">
+              <Search onSearch={handleSearch} loading={loading} />
+            </div>
+          ) : (
+            <Dashboard sessionId={sessionId} onBack={handleBack} />
+          )}
+        </div>
       </main>
     </div>
   );
