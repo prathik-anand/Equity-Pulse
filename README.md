@@ -51,9 +51,10 @@ pip install uv
 uv sync
 
 # Configure Environment
-# Copy example env (if available) or create .env
-echo "DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/equitypulse" > .env
-echo "GOOGLE_API_KEY=your_gemini_key" >> .env
+cp .env.example .env
+
+# Edit .env and set your secrets
+# - GOOGLE_API_KEY
 
 # Run Database Migrations
 alembic upgrade head
