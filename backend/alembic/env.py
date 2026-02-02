@@ -11,6 +11,7 @@ from app.core.config import get_settings
 from app.models.base import Base
 # Import all models here so Alembic can see them
 from app.models.report import AnalysisSession
+from app.models.chat import ChatHistory
 
 settings = get_settings()
 

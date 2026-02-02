@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
-from app.api.endpoints import analysis, tickers
+from app.api.endpoints import analysis, tickers, chat
 
 settings = get_settings()
 
@@ -32,6 +32,7 @@ app.add_middleware(
 
 app.include_router(analysis.router, prefix=f"{settings.API_V1_STR}", tags=["analysis"])
 app.include_router(tickers.router, prefix=f"{settings.API_V1_STR}", tags=["tickers"])
+app.include_router(chat.router, prefix=f"{settings.API_V1_STR}/chat", tags=["chat"])
 
 @app.get("/")
 async def root():

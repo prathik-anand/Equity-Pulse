@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     DATABASE_URL: str
     GOOGLE_API_KEY: str
+    GEMINI_MODEL_NAME: str = "gemini-1.5-pro"
 
     class Config:
         env_file = ".env"

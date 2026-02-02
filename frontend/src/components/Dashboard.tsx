@@ -1,11 +1,12 @@
 
 import React, { useEffect, useState } from 'react';
 import { getAnalysisResult } from '../api';
-import { motion } from 'framer-motion';
-import { ArrowLeft, FileText, Activity, BarChart3, TrendingUp, Users, AlertCircle, CheckCircle2, Loader2, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FileText, Activity, BarChart3, TrendingUp, Users, AlertCircle, CheckCircle2, ArrowUpRight, ArrowDownRight, Minus, Sparkles } from 'lucide-react';
 import { ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, PieChart, Pie, Cell } from 'recharts';
 import clsx from 'clsx';
 import LogViewer from './LogViewer';
+import { ChatWidget } from './ChatWidget';
 
 interface DashboardProps {
     sessionId: string;
@@ -16,6 +17,53 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
     const [data, setData] = useState<any>(null);
     const [status, setStatus] = useState<string>('processing');
     const [activeTab, setActiveTab] = useState('summary');
+
+    // --- Chat Selection Logic ---
+    const [selectionTooltip, setSelectionTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
+    const [chatContext, setChatContext] = useState<{ selectedText: string } | undefined>(undefined);
+
+    useEffect(() => {
+        const handleMouseUp = (e: MouseEvent) => {
+            // Ignore clicks on the tooltip itself
+            if ((e.target as HTMLElement).closest('#ask-ai-tooltip')) return;
+
+            const selection = window.getSelection();
+            if (selection && selection.toString().trim().length > 5) {
+                // Position relative to cursor with a slight offset
+                setSelectionTooltip({
+                    x: e.clientX,
+                    y: e.clientY - 40, // Above the cursor
+                    text: selection.toString().trim()
+                });
+            } else {
+                setSelectionTooltip(null);
+            }
+        };
+
+        // Only listen for selection inside the dashboard
+        const dashboardEl = document.getElementById('dashboard-content');
+        if (dashboardEl) {
+            dashboardEl.addEventListener('mouseup', handleMouseUp);
+        } else {
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        return () => {
+            document.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, []);
+
+    const handleAskAI = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (selectionTooltip) {
+            setChatContext({ selectedText: selectionTooltip.text });
+            setSelectionTooltip(null);
+            // Clear browser selection
+            window.getSelection()?.removeAllRanges();
+        }
+    };
+    // ----------------------------
 
     useEffect(() => {
         let interval: any;
@@ -142,6 +190,8 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
             { subject: 'Safety', A: (parseFloat(d.debt_to_equity) || 0) < 0.5 ? 90 : (parseFloat(d.debt_to_equity) || 0) < 1.0 ? 65 : 40, fullMark: 100 },
         ];
     };
+
+
 
     const tabs = [
         { id: 'summary', label: 'Summary', icon: FileText },
@@ -687,6 +737,33 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                     </motion.div>
                 )}
             </div>
+
+            {/* Selection Tooltip */}
+            <AnimatePresence>
+                {selectionTooltip && (
+                    <motion.button
+                        initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        id="ask-ai-tooltip"
+                        onClick={handleAskAI}
+                        style={{ top: selectionTooltip.y, left: selectionTooltip.x }}
+                        className="fixed z-[100] transform -translate-x-1/2 -translate-y-full mb-2 bg-indigo-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1 hover:bg-indigo-500 hover:scale-105 transition-all"
+                    >
+                        <Sparkles className="w-3 h-3" />
+                        Ask AI
+                    </motion.button>
+                )}
+            </AnimatePresence>
+
+            {/* Chat Widget */}
+            <ChatWidget
+                sessionId={sessionId} // This is the user session ID (client side)
+                reportId={data.id}    // This is the backend Report ID
+                activeTab={activeTab}
+                initialContext={chatContext}
+                onCloseSelection={() => setChatContext(undefined)}
+            />
         </div>
     );
 };

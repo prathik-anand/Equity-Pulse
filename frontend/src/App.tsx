@@ -28,7 +28,7 @@ function App() {
   const [history, setHistory] = useState<any[]>([]);
 
   // Initialize User Session ID (Lazy Initialization)
-  const [userSessionId, setUserSessionId] = useState<string | null>(() => {
+  const [userSessionId, _setUserSessionId] = useState<string | null>(() => {
     const key = 'equity_pulse_user_id';
     let storedId = localStorage.getItem(key);
     if (!storedId) {
