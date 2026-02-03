@@ -45,81 +45,103 @@ class AgentLogger:
             else:
                 self.sys_logger.warning("Langfuse credentials not found. Observability will be disabled.")
 
-    def _log(self, level_name: str, level_val: int, message: str):
-        # 1. Capture for Frontend/History (Locally kept for compatibility if needed, but primary is Langfuse)
-        if level_val >= self.level:
-            timestamp = datetime.now().strftime("%H:%M:%S")
-            log_entry = f"[{timestamp}] [{self.agent_name}] {level_name}: {message}"
-            self.logs.append(log_entry)
-            
-            # Stream to Frontend (Hybrid Mode)
-            # Stream to Frontend (Hybrid Mode)
-            if self.session_id:
-                # Detect Type for Rich UI
-                msg_type = "info"
-                clean_content = message
-                
-                if "Tool Usage:" in message: 
-                    msg_type = "tool"
-                    clean_content = message.replace("Tool Usage:", "").strip()
-                elif "Insight:" in message: 
-                    msg_type = "thought" 
-                    clean_content = message.replace("Insight:", "").strip()
-                elif "Activated" in message or "Analysis Completed" in message:
-                    msg_type = "lifecycle"
+    async def stream_event(self, event_type: str, content: str, payload: dict = None):
+        """
+        Directly streams a structured event to the frontend and Langfuse.
+        """
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        
+        # 1. Prepare Payload
+        full_payload = {
+            "type": event_type,
+            "timestamp": timestamp,
+            "agent": self.agent_name,
+            "content": content,
+            # Merge additional details
+            **(payload or {})
+        }
+        
+        # Also append to local memory for legacy compatibility
+        # We serialize it to JSON string so it survives passing around in state
+        json_str = json.dumps(full_payload)
+        self.logs.append(json_str)
 
-                payload = {
-                    "type": msg_type,
-                    "timestamp": timestamp,
-                    "agent": self.agent_name,
-                    "message": message,
-                    "content": clean_content
-                }
+        if not self.session_id:
+            return
 
-                coro = stream_manager.broadcast(self.session_id, json.dumps(payload))
+        # 2. Broadcast to Frontend
+        coro = stream_manager.broadcast(self.session_id, json_str)
+        try:
+             # Try using the captured loop if it matches the current context or if we are in a thread
+            if self.loop and self.loop.is_running():
                 try:
-                    # 1. Try using the captured loop if it matches the current context or if we are in a thread
-                    if self.loop and self.loop.is_running():
-                        try:
-                            # if we are in the loop, create_task
-                            if asyncio.get_running_loop() is self.loop:
-                                self.loop.create_task(coro)
-                            else:
-                                # we are in another thread, allow threadsafe
-                                asyncio.run_coroutine_threadsafe(coro, self.loop)
-                        except RuntimeError:
-                             # in a thread with no loop, use threadsafe
-                             asyncio.run_coroutine_threadsafe(coro, self.loop)
+                    # if we are in the loop, create_task
+                    if asyncio.get_running_loop() is self.loop:
+                        self.loop.create_task(coro)
                     else:
-                         # 2. Fallback: try to get current loop (if we didn't capture one in init)
-                         asyncio.get_running_loop().create_task(coro)
-                except Exception as e:
-                    pass
+                        # we are in another thread, allow threadsafe
+                        asyncio.run_coroutine_threadsafe(coro, self.loop)
+                except RuntimeError:
+                        # in a thread with no loop, use threadsafe
+                        asyncio.run_coroutine_threadsafe(coro, self.loop)
+            else:
+                    # Fallback
+                    asyncio.get_running_loop().create_task(coro)
+        except Exception:
+            pass
 
-            # 2. Send to Langfuse
-            if AgentLogger._langfuse and self.session_id:
-                try:
-                    # Sanitize trace_id: Langfuse expects 32-char hex, so remove hyphens from UUID
-                    sanitized_trace_id = self.session_id.replace("-", "")
-                    
-                    # Use create_event directly (v3 SDK)
-                    AgentLogger._langfuse.create_event(
-                        name=f"log-{level_name.lower()}",
-                        trace_context={"trace_id": sanitized_trace_id},
-                        level=level_name if level_name in ['DEBUG', 'WARNING', 'ERROR'] else 'DEFAULT',
-                        metadata={
-                            "message": message,
-                            "agent": self.agent_name,
-                            "level_val": level_val,
-                            "type": msg_type
-                        },
-                        input=message
+        # 3. Send to Langfuse
+        if AgentLogger._langfuse:
+            try:
+                sanitized_trace_id = self.session_id.replace("-", "")
+                AgentLogger._langfuse.create_event(
+                    name=f"{self.agent_name}-{event_type}",
+                    trace_context={"trace_id": sanitized_trace_id},
+                    level="INFO",
+                    metadata=full_payload,
+                    input=content
+                )
+            except Exception as e:
+                self.sys_logger.error(f"Langfuse error: {e}")
+
+    def log_tool_start(self, tool_name: str, args: dict):
+        # Sync wrapper for async stream
+        # This is a hack because our logger interface is sync in parts of the code
+        # We use the captured loop to schedule the async event
+        msg = f"Using {tool_name}..."
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(
+                self.stream_event("tool", msg, {"tool_name": tool_name, "args": args, "status": "start"}), 
+                self.loop
+            )
+
+    def log_thought(self, thought_text: str):
+        if self.loop:
+            asyncio.run_coroutine_threadsafe(
+                self.stream_event("thought", thought_text), 
+                self.loop
+            )
+
+    def _log(self, level_name: str, level_val: int, message: str):
+        # Legacy/Standard Logger Support
+        # We try to infer structure if it comes from the old calls
+        if level_val >= self.level:
+            # Check if this is arguably a lifecycle event
+            if "Activated" in message or "Analysis Completed" in message:
+                 if self.loop:
+                    asyncio.run_coroutine_threadsafe(
+                        self.stream_event("lifecycle", message),
+                        self.loop
                     )
-                except Exception as e:
-                    self.sys_logger.error(f"Failed to send log to Langfuse: {e}")
+            elif "Starting analysis" in message:
+                if self.loop:
+                    asyncio.run_coroutine_threadsafe(
+                        self.stream_event("info", message),
+                        self.loop
+                    )
             
-        # 3. Emit to System/Console (Standard Logging)
-        self.sys_logger.log(level_val, message) 
+            # Emit to Console always
+            self.sys_logger.log(level_val, message)
 
     def debug(self, message: str):
         self._log("DEBUG", LogLevel.DEBUG, message)

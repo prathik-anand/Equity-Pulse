@@ -161,7 +161,7 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
                         args = input_str
                     
                     # LOG FULL DETAILS AS REQUESTED
-                    self.logger.info(f"Tool Usage: {tool_name} | Args: {args}")
+                    self.logger.log_tool_start(tool_name, args)
 
                 def on_llm_end(self, response, **kwargs):
                     import ast
@@ -198,7 +198,7 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
                         clean_text = text.strip()
                         if clean_text:
                             # LOG FULL CONTENT - NO TRUNCATION
-                            self.logger.info(f"Insight: {clean_text}")
+                            self.logger.log_thought(clean_text)
 
             
             # Step 1: Run Reasoning Loop (Sequentially via ReAct)
