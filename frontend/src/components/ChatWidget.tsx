@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import clsx from 'clsx';
 import { API_BASE_URL } from '../api';
+import VoiceInput from './VoiceInput';
 
 interface ChatWidgetProps {
     sessionId: string;
@@ -179,6 +180,24 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages, plannerSteps, isOpen]);
 
+    // Auto-resize textarea
+    useEffect(() => {
+        if (inputRef.current) {
+            inputRef.current.style.height = 'auto'; // Reset height
+            // Allow it to grow up to a large size, CSS max-height will handle the ultimate limit
+            inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+        }
+    }, [inputValue]);
+
+    const handleTranscription = (text: string) => {
+        setInputValue(prev => {
+            const trimmed = prev.trim();
+            return trimmed ? `${trimmed} ${text}` : text;
+        });
+        // Optional: Auto-focus the input
+        inputRef.current?.focus();
+    };
+
     const handleSend = async () => {
         if (!inputValue.trim() || isLoading) return;
 
@@ -244,9 +263,25 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                             // Token Stream (Final Answer)
                             if (data.type === 'token') {
                                 assistantContent += data.content;
-                                setMessages(prev => prev.map(m =>
-                                    m.id === assistantMsgId ? { ...m, content: assistantContent } : m
-                                ));
+                                setMessages(prev => prev.map(m => {
+                                    if (m.id !== assistantMsgId) return m;
+
+                                    // Check if we need to close a lingering running thought
+                                    let newThoughts = m.thoughts;
+                                    if (newThoughts && newThoughts.length > 0) {
+                                        const last = newThoughts[newThoughts.length - 1];
+                                        if (last.status === 'running') {
+                                            newThoughts = [...newThoughts];
+                                            newThoughts[newThoughts.length - 1] = { ...last, status: 'completed' };
+                                        }
+                                    }
+
+                                    return {
+                                        ...m,
+                                        content: assistantContent,
+                                        thoughts: newThoughts
+                                    };
+                                }));
                             }
                             // Thoughts (Planner)
                             else if (data.type === 'thought') {
@@ -482,9 +517,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                                         >
                                             {turn.assistant.content || (turn.assistant.isStreaming ? ' ' : '')}
                                         </ReactMarkdown>
-                                        {turn.assistant.isStreaming && !turn.assistant.content && (
-                                            <span className="inline-block w-1.5 h-4 bg-indigo-400 animate-pulse ml-1 align-middle" />
-                                        )}
                                     </div>
 
                                     <div className="mt-3 pt-3 border-t border-white/5 flex justify-end">
@@ -508,6 +540,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
             {/* Input Area */}
             <div className="p-4 bg-[#0F1117] border-t border-white/5">
                 <div className="relative flex items-end gap-2 bg-white/5 rounded-xl border border-white/10 p-2 focus-within:border-indigo-500/50 transition-colors">
+                    <VoiceInput onTranscriptionComplete={handleTranscription} />
                     <textarea
                         ref={inputRef}
                         value={inputValue}
@@ -519,7 +552,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                             }
                         }}
                         placeholder="Ask clarify questions about the report..."
-                        className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-white/30 text-sm resize-none max-h-[100px] min-h-[20px] py-2" // Reduced padding
+                        className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-white/30 text-sm resize-none max-h-[30vh] min-h-[20px] py-2 overflow-y-auto" // Increased max-height
                         rows={1}
                         style={{ height: 'auto', minHeight: '40px' }} // Dynamic height
                     />
