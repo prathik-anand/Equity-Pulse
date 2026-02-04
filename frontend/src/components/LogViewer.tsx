@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import {
     Brain,
     ChevronDown,
@@ -128,8 +130,12 @@ const ReasoningStep = ({
                                     {typeof log.args === 'object' ? JSON.stringify(log.args, null, 2) : log.content}
                                 </div>
                             ) : (
-                                <div className="p-4 text-sm text-gray-300 leading-relaxed whitespace-pre-wrap font-sans">
-                                    {log.content}
+                                <div className="p-4 text-sm text-gray-300 leading-relaxed font-sans prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-black/30 prose-pre:border prose-pre:border-white/10">
+                                    <ReactMarkdown
+                                        remarkPlugins={[remarkGfm]}
+                                    >
+                                        {log.content}
+                                    </ReactMarkdown>
                                 </div>
                             )}
                         </div>
