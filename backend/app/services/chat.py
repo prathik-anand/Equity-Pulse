@@ -72,14 +72,32 @@ class ChatService:
                 
                 if kind == "on_chat_model_stream":
                     # key fix: only stream tokens from the final responder node
-                    # filter out planner/executor thoughts
                     node_name = event.get("metadata", {}).get("langgraph_node", "")
+                    
                     if node_name == "responder":
                         content = event["data"]["chunk"].content
                         if content:
                             final_answer += content
                             yield json.dumps({"type": "token", "content": content})
-                
+                    elif node_name == "planner":
+                        # Stream the planner's thought process
+                        content = event["data"]["chunk"].content
+                        if content:
+                            yield json.dumps({"type": "thought", "content": content})
+
+                elif kind == "on_tool_start":
+                    # Capture tool calls
+                    name = event["name"]
+                    inputs = event["data"].get("input")
+                    yield json.dumps({"type": "tool_start", "tool": name, "input": inputs})
+
+                elif kind == "on_tool_end":
+                    # Capture tool results
+                    name = event["name"]
+                    output = event["data"].get("output")
+                    # Convert output to string if it's an object to match frontend expectation
+                    yield json.dumps({"type": "tool_end", "tool": name, "output": str(output)})
+
                 elif kind == "on_chain_end" and event["name"] == "planner":
                      output = event["data"].get("output")
                      if output and "plan" in output:

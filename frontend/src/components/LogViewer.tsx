@@ -6,111 +6,99 @@ import {
     ChevronDown,
     ChevronRight,
     Terminal,
-    CheckCircle2,
     Clock,
     Search,
     AlertCircle,
-    Loader2,
     Activity
 } from 'lucide-react';
-import { clsx } from 'clsx';
 import { motion, AnimatePresence } from 'framer-motion';
-
-// --- Types ---
+import clsx from 'clsx';
+import { API_BASE_URL } from '../api';
 
 interface LogEntry {
-    type: 'thought' | 'tool' | 'lifecycle' | 'error' | 'info';
+    type: 'tool' | 'thought' | 'info' | 'error' | 'lifecycle';
     timestamp: string;
     agent: string;
     message: string;
     content: string;
-    // New fields from backend refactor
-    tool_name?: string;
-    status?: 'start' | 'end' | 'error';
     args?: any;
 }
 
 interface LogViewerProps {
-    sessionId: string | null;
-    initialLogs?: (string | LogEntry)[];
+    sessionId: string;
+    initialLogs?: LogEntry[];
     isProcessing?: boolean;
 }
 
-// --- Helper Components ---
+// --- Helper to format tool inputs human-readably ---
+const formatToolInput = (args: any): string => {
+    if (typeof args === 'string') return args;
+    if (!args) return '';
 
-const StatusIcon = ({ type, isRunning }: { type: LogEntry['type'], isRunning?: boolean }) => {
-    if (isRunning) return <Loader2 className="w-4 h-4 text-sky-400 animate-spin" />;
+    // Logic to make specific tools read better
+    if (args.query) return `Searching for: "${args.query}"`;
+    if (args.ticker) return `Analyzing ticker: ${args.ticker}`;
+    if (args.url) return `Reading URL: ${args.url}`;
 
-    switch (type) {
-        case 'thought': return <Brain className="w-4 h-4 text-purple-400" />;
-        case 'tool': return <Search className="w-4 h-4 text-blue-400" />;
-        case 'error': return <AlertCircle className="w-4 h-4 text-red-500" />;
-        case 'lifecycle': return <Activity className="w-4 h-4 text-emerald-400" />;
-        default: return <Clock className="w-4 h-4 text-gray-500" />;
+    // Fallback: Clean key-value pairs
+    try {
+        return Object.entries(args)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(', ');
+    } catch (e) {
+        return JSON.stringify(args);
     }
 };
 
-const ReasoningStep = ({
-    log,
-    previousLog
-}: {
-    log: LogEntry,
-    previousLog?: LogEntry
-}) => {
-    // Determine if this is a "Thought Block" (long reasoning) or a "Action" (quick tool use)
+const ReasoningStep: React.FC<{ log: LogEntry, previousLog?: LogEntry }> = ({ log, previousLog }) => {
     const isThought = log.type === 'thought';
     const isTool = log.type === 'tool';
-    const [isOpen, setIsOpen] = useState(false);
+    const isError = log.type === 'error';
 
-    // Auto-expand errors or active thoughts if desired
-    // For OpenAI style, thoughts are usually collapsed by default ("Thinking...")
-
-    const timeDisplay = log.timestamp ? log.timestamp.split('.')[0] : '';
+    const [isOpen, setIsOpen] = useState(isThought || isTool);
 
     return (
-        <div className="group border-l-2 border-white/5 pl-4 ml-2 relative py-2">
-            {/* Timeline Dot */}
-            <div className={clsx(
-                "absolute -left-[5px] top-3 w-2.5 h-2.5 rounded-full border-2 border-[#111]",
-                isThought ? "bg-purple-500/50" :
-                    isTool ? "bg-blue-500/50" :
-                        log.type === 'error' ? "bg-red-500" : "bg-gray-600"
-            )} />
-
-            {/* Header / Summary Line */}
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={clsx(
+                "group relative border-l-2 pl-4 py-2 transition-all duration-300",
+                isThought ? "border-purple-500/50" :
+                    isTool ? "border-blue-500/50" :
+                        isError ? "border-red-500/50" :
+                            "border-white/10"
+            )}
+        >
             <div
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-start gap-3 cursor-pointer select-none"
             >
-                <div className="mt-0.5 opacity-70 group-hover:opacity-100 transition-opacity">
-                    <StatusIcon type={log.type} />
+                <div className={clsx("mt-0.5 p-1 rounded-md transition-colors",
+                    isThought ? "text-purple-400 bg-purple-500/10 group-hover:bg-purple-500/20" :
+                        isTool ? "text-blue-400 bg-blue-500/10 group-hover:bg-blue-500/20" :
+                            isError ? "text-red-400 bg-red-500/10" : "text-gray-500"
+                )}>
+                    {isThought ? <Brain className="w-4 h-4" /> :
+                        isTool ? <Search className="w-4 h-4" /> :
+                            isError ? <AlertCircle className="w-4 h-4" /> :
+                                <Activity className="w-4 h-4" />}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-xs font-mono text-white/40 uppercase tracking-wider">
-                            {log.agent}
+                    <div className="flex items-center justify-between gap-4">
+                        <span className={clsx("text-sm font-medium truncate",
+                            isThought ? "text-purple-200" :
+                                isTool ? "text-blue-200" :
+                                    isError ? "text-red-200" : "text-gray-400"
+                        )}>
+                            {isTool && log.content.includes("Using") ? formatToolInput(log.args) || log.content : log.content.split('\n')[0]}
                         </span>
-                        <span className="text-xs text-white/20">•</span>
-                        <span className="text-xs font-mono text-white/20">
-                            {timeDisplay}
-                        </span>
+                        <div className="flex items-center gap-2 text-[10px] text-white/30 whitespace-nowrap">
+                            <Clock className="w-3 h-3" />
+                            <span>{log.timestamp}</span>
+                            {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                        </div>
                     </div>
-
-                    <div className={clsx(
-                        "text-sm font-medium leading-relaxed truncate pr-4",
-                        isThought ? "text-purple-200" :
-                            isTool ? "text-blue-200" :
-                                "text-gray-300"
-                    )}>
-                        {isThought ? "Reasoning Process..." :
-                            isTool ? `Running ${log.tool_name || 'Tool'}...` :
-                                log.content}
-                    </div>
-                </div>
-
-                <div className="text-white/20 group-hover:text-white/60 transition-colors">
-                    {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </div>
             </div>
 
@@ -126,8 +114,8 @@ const ReasoningStep = ({
                         <div className="mt-3 bg-white/5 rounded-lg border border-white/5 overflow-hidden">
                             {isTool && log.args ? (
                                 <div className="p-3 bg-black/20 font-mono text-xs text-blue-300/80 break-all whitespace-pre-wrap">
-                                    {/* Try to pretty print args if they are an object */}
-                                    {typeof log.args === 'object' ? JSON.stringify(log.args, null, 2) : log.content}
+                                    {/* Use formatToolInput instead of JSON.stringify */}
+                                    {formatToolInput(log.args)}
                                 </div>
                             ) : (
                                 <div className="p-4 text-sm text-gray-300 leading-relaxed font-sans prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-black/30 prose-pre:border prose-pre:border-white/10">
@@ -142,14 +130,13 @@ const ReasoningStep = ({
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </motion.div>
     );
 };
 
-
 const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isProcessing = false }) => {
     const [logs, setLogs] = useState<LogEntry[]>([]);
-    const [isExpanded, setIsExpanded] = useState(true); // Default to expanded for visibility
+    const [isExpanded, setIsExpanded] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const tryParseLog = (logItem: any): LogEntry => {
@@ -201,9 +188,6 @@ const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isPr
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [logs.length]);
-
-    // Filter out boring logs if needed, or group
-    // For now, let's just show them all but styled beautifully
 
     return (
         <div className="mt-8 mb-12">
@@ -269,11 +253,5 @@ const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isPr
         </div>
     );
 };
-
-// Assuming API_BASE_URL is defined in parent or global context. 
-// If it was imported, we need to keep the import. 
-// Based on previous file, it seemed to rely on a global or was missing.
-// I will assume standard Vite/Env setup or local declaration.
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export default LogViewer;

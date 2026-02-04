@@ -24,8 +24,9 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
 
     useEffect(() => {
         const handleMouseUp = (e: MouseEvent) => {
-            // Ignore clicks on the tooltip itself
+            // Ignore clicks on the tooltip itself or inside the Chat Widget
             if ((e.target as HTMLElement).closest('#ask-ai-tooltip')) return;
+            if ((e.target as HTMLElement).closest('#chat-widget-container')) return;
 
             const selection = window.getSelection();
             if (selection && selection.toString().trim().length > 5) {
