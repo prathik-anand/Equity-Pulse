@@ -158,7 +158,9 @@ def search_governance_issues(query: str) -> str:
         max_retries = 3
         for i in range(max_retries):
             try:
-                search = DuckDuckGoSearchRun()
+                from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+                wrapper = DuckDuckGoSearchAPIWrapper(region="us-en", time="y", max_results=5)
+                search = DuckDuckGoSearchRun(api_wrapper=wrapper)
                 results = search.run(query)
                 break
             except Exception as e:
@@ -485,7 +487,9 @@ def search_market_trends(query: str) -> str:
         max_retries = 3
         for i in range(max_retries):
             try:
-                search = DuckDuckGoSearchRun()
+                from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+                wrapper = DuckDuckGoSearchAPIWrapper(region="us-en", time="y", max_results=5)
+                search = DuckDuckGoSearchRun(api_wrapper=wrapper)
                 results = search.run(query)
                 break
             except Exception as e:

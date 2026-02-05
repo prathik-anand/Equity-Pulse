@@ -58,7 +58,10 @@ else
 fi
 
 echo "Starting Langfuse with database: $LANGFUSE_DATABASE_URL"
+# Pull latest image first to ensure we have the correct version
+echo "Pulling latest Langfuse image..."
+LANGFUSE_DATABASE_URL=$LANGFUSE_DATABASE_URL $COMPOSE_CMD -f docker-compose.langfuse.yml pull
 # Pass the env var explicitly to docker-compose
 LANGFUSE_DATABASE_URL=$LANGFUSE_DATABASE_URL $COMPOSE_CMD -f docker-compose.langfuse.yml up -d
 
-echo "Langfuse is starting at http://localhost:3000"
+echo "Langfuse is starting at http://localhost:3002"

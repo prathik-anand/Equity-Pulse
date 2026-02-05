@@ -40,6 +40,15 @@ if [ ! -f "$PYTHON_EXEC" ]; then
 fi
 
 export PYTHONPATH=$(pwd)
+
+# Load .env variables so OTel/Langfuse can pick them up
+if [ -f ".env" ]; then
+    echo -e "${BLUE}[INFO] Loading .env variables...${NC}"
+    set -a
+    source .env
+    set +a
+fi
+
 echo -e "${GREEN}[SUCCESS] Backend running at http://localhost:8001${NC}"
 
 # Define cleanup function

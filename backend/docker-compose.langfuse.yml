@@ -4,13 +4,13 @@ services:
   langfuse-server:
     image: langfuse/langfuse:2
     ports:
-      - "3000:3000"
+      - "3002:3000"
     environment:
       - NODE_ENV=production
       # Using variable expansion so you can provide it in .env or shell
       - DATABASE_URL=${LANGFUSE_DATABASE_URL}
       - NEXTAUTH_SECRET=mysecret
       - SALT=mysecret
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=http://localhost:3002
       - TELEMETRY_ENABLED=false
       - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES=true

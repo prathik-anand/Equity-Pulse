@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     GOOGLE_API_KEY: str
     GEMINI_MODEL_NAME: str = "gemini-1.5-pro"
+    
+    # Langfuse Integration
+    LANGFUSE_PUBLIC_KEY: str | None = None
+    LANGFUSE_SECRET_KEY: str | None = None
+    LANGFUSE_HOST: str | None = None
 
     class Config:
         env_file = ".env"

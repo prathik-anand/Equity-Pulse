@@ -78,6 +78,18 @@ async def planner_node(state: ChatState):
     # Format prompt
     chain = planner_prompt | llm | JsonOutputParser()
     
+    # Init Langfuse Tracing
+    callbacks = []
+    try:
+        from langfuse.callback import CallbackHandler
+        settings = get_settings()
+        if hasattr(settings, "LANGFUSE_PUBLIC_KEY") and settings.LANGFUSE_PUBLIC_KEY:
+             callbacks.append(CallbackHandler())
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
     try:
         # Get the last message content
         last_message = messages[-1].content if messages else ""
@@ -86,7 +98,7 @@ async def planner_node(state: ChatState):
             "messages": last_message,
             "active_tab": active_tab,
             "selected_text": selected_text
-        })
+        }, config={"callbacks": callbacks})
         
         return {
             "plan": result.get("plan", []),
