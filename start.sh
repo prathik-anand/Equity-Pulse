@@ -5,8 +5,8 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}[INFO] Cleaning up ports 8000 (Backend) and 5173 (Frontend)...${NC}"
-kill -9 $(lsof -t -i:8000) 2>/dev/null
+echo -e "${BLUE}[INFO] Cleaning up ports 8001 (Backend) and 5173 (Frontend)...${NC}"
+kill -9 $(lsof -t -i:8001) 2>/dev/null
 kill -9 $(lsof -t -i:5173) 2>/dev/null
 pkill -f 'uvicorn app.main:app' 2>/dev/null || true
 
@@ -40,7 +40,7 @@ if [ ! -f "$PYTHON_EXEC" ]; then
 fi
 
 export PYTHONPATH=$(pwd)
-echo -e "${GREEN}[SUCCESS] Backend running at http://localhost:8000${NC}"
+echo -e "${GREEN}[SUCCESS] Backend running at http://localhost:8001${NC}"
 
 # Define cleanup function
 cleanup() {
@@ -55,5 +55,5 @@ cleanup() {
 trap cleanup EXIT
 
 # Run Uvicorn directly
-$PYTHON_EXEC -m uvicorn app.main:app --host 127.0.0.1 --reload
+$PYTHON_EXEC -m uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
 
