@@ -94,10 +94,14 @@ class AgentLogger:
         if AgentLogger._langfuse:
             try:
                 sanitized_trace_id = self.session_id.replace("-", "")
-                AgentLogger._langfuse.create_event(
+                # Use trace() then event() for SDK v2.x compatibility
+                trace = AgentLogger._langfuse.trace(
+                    id=sanitized_trace_id,
+                    name=f"session-{self.session_id[:8]}"
+                )
+                trace.event(
                     name=f"{self.agent_name}-{event_type}",
-                    trace_context={"trace_id": sanitized_trace_id},
-                    level="INFO",
+                    level="DEFAULT",
                     metadata=full_payload,
                     input=content
                 )
