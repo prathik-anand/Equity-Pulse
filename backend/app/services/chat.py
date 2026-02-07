@@ -239,12 +239,21 @@ class ChatService:
                     output = event["data"].get("output")
                     if output and "execution_results" in output:
                         exec_results = output["execution_results"]
+
+                        # Apply truncation for stream output only
+                        truncated_results = {}
+                        for k, v in exec_results.items():
+                            val_str = str(v)
+                            if len(val_str) > 500:
+                                val_str = val_str[:500] + "... [truncated]"
+                            truncated_results[k] = val_str
+
                         thoughts.append(
                             {
                                 "type": "execution",
                                 "content": json.dumps(
                                     {"execution_results": exec_results}
-                                ),
+                                ),  # Save full result to DB
                                 "status": "completed",
                                 "timestamp": datetime.now().isoformat(),
                             }
@@ -252,7 +261,39 @@ class ChatService:
                         yield json.dumps(
                             {
                                 "type": "execution",
-                                "content": exec_results,
+                                "content": truncated_results,  # Yield truncated result
+                            }
+                        )
+
+                elif kind == "on_chain_end" and event["name"] == "validator":
+                    output = event["data"].get("output")
+                    if output and (
+                        "validator_status" in output or "feedback" in output
+                    ):
+                        status = output.get("validator_status", "unknown")
+                        feedback = output.get("feedback", "")
+                        attempts = output.get("validation_attempts", 0)
+
+                        content = f"Validation: {status}"
+                        if feedback:
+                            content += f" - {feedback}"
+                        if attempts > 1:
+                            content += f" (Attempt {attempts})"
+
+                        thoughts.append(
+                            {
+                                "type": "thought",
+                                "node": "validator",
+                                "content": content,
+                                "status": "completed",
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                        )
+                        yield json.dumps(
+                            {
+                                "type": "thought",
+                                "node": "validator",
+                                "content": content,
                             }
                         )
 

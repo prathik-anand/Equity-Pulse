@@ -13,7 +13,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptionComplete }) => {
     const chunksRef = useRef<Blob[]>([]);
     const audioContextRef = useRef<AudioContext | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
-    const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare, X, Minimize2, Maximize2, Loader2, Sparkles, Brain, ChevronDown, ChevronRight, Plus, Clock } from 'lucide-react';
+import { Send, MessageSquare, X, Minimize2, Maximize2, Loader2, Sparkles, Brain, ChevronDown, Plus, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -25,6 +25,7 @@ interface ThoughtStep {
     toolName?: string;
     toolInput?: string;
     toolOutput?: string;
+    node?: string; // e.g., 'validator', 'planner'
     status: 'running' | 'completed' | 'failed';
     timestamp: Date;
 }
@@ -63,6 +64,34 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
         // Fallback for empty/string content if parsing fails or is just a string
         const isString = typeof parsed === 'string';
 
+        // --- 0. Running State Handling (Hide Raw JSON) ---
+        if (step.status === 'running' && step.type === 'thought') {
+            // If content looks like JSON start, show loading indicator instead of raw text
+            if (isString && (parsed.trim().startsWith('{') || parsed.trim().startsWith('```'))) {
+                return (
+                    <div className="text-zinc-400 italic flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Generating analysis...
+                    </div>
+                );
+            }
+        }
+
+        // --- 0.5. Validator/Replanning Feedback ---
+        if (step.node === 'validator' || (step.content?.startsWith('Validation:'))) {
+            return (
+                <div className="text-amber-300/90 mb-3 text-sm px-3 py-2 border-l-2 border-amber-500/40 bg-amber-500/5 rounded-r">
+                    <div className="flex items-center gap-2 mb-1 text-[10px] font-bold text-amber-500 uppercase tracking-widest">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        Methodology Check
+                    </div>
+                    <div className="italic opacity-90 leading-relaxed font-mono text-xs">
+                        {step.content}
+                    </div>
+                </div>
+            );
+        }
+
         // --- 1. Execution Plan ---
         if (step.type === 'plan' || parsed.plan) {
             const planData = parsed.plan || parsed;
@@ -72,12 +101,12 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
             if (!Array.isArray(steps) && isString) return <div className="text-zinc-500 italic">{String(parsed)}</div>;
 
             return (
-                <div className="text-zinc-300/90 mb-2">
-                    <div className="flex items-center gap-2 mb-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1 rounded w-fit border border-zinc-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+                <div className="text-zinc-200 mb-2">
+                    <div className="flex items-center gap-2 mb-1.5 text-[10px] font-bold text-blue-300 uppercase tracking-widest bg-blue-900/20 p-1 rounded w-fit border border-blue-700/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
                         Execution Plan
                     </div>
-                    <ul className="space-y-1 text-sm pl-1 border-l border-zinc-800 ml-1">
+                    <ul className="space-y-1 text-sm pl-1 border-l border-white/10 ml-1">
                         {Array.isArray(steps) && steps.map((s: any, i: number) => {
                             // Map technical tool names to human actions
                             let action = s.tool?.replace(/_/g, ' ') || 'Action';
@@ -98,11 +127,11 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
                             else if (args.ticker) details = args.ticker;
 
                             return (
-                                <li key={i} className="flex gap-3 items-start pl-3 text-zinc-400">
+                                <li key={i} className="flex gap-3 items-start pl-3 text-zinc-200">
                                     <span className="font-mono text-[10px] opacity-50 mt-1">{i + 1}.</span>
                                     <div>
-                                        <span className="font-medium text-zinc-300">{action}</span>
-                                        {details && <span className="text-zinc-500 ml-1.5 font-light">{details}</span>}
+                                        <span className="font-medium text-zinc-200">{action}</span>
+                                        {details && <span className="text-zinc-400 ml-1.5 font-light">{details}</span>}
                                     </div>
                                 </li>
                             );
@@ -115,19 +144,19 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
         // --- 2. Query Rewrite ---
         if (step.type === 'query_rewrite' || parsed.rewritten_query) {
             return (
-                <div className="text-zinc-300 mb-2 text-sm">
-                    <div className="flex items-center gap-2 mb-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1 rounded w-fit border border-zinc-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></span>
+                <div className="text-zinc-200 mb-2 text-sm">
+                    <div className="flex items-center gap-2 mb-1.5 text-[10px] font-bold text-blue-300 uppercase tracking-widest bg-blue-900/20 p-1 rounded w-fit border border-blue-700/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></span>
                         Context Analysis
                     </div>
-                    <div className="pl-3 border-l border-zinc-800 ml-1">
+                    <div className="pl-3 border-l border-white/10 ml-1">
                         <span className="text-zinc-500 text-[10px] uppercase tracking-wide">Intent</span>
                         <div className="italic text-zinc-200 mt-0.5 mb-1">"{parsed.rewritten_query || step.content}"</div>
 
                         {parsed.sub_queries && parsed.sub_queries.length > 0 && (
                             <div className="mt-1 text-xs grid gap-0.5">
                                 {parsed.sub_queries.map((q: string, i: number) => (
-                                    <div key={i} className="flex gap-2 text-zinc-500">
+                                    <div key={i} className="flex gap-2 text-zinc-400">
                                         <span>•</span>
                                         <span>{q}</span>
                                     </div>
@@ -142,13 +171,21 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
         // --- 3. Image Analysis ---
         if (step.type === 'image_analysis') {
             return (
-                <div className="text-zinc-300 mb-1.5 text-sm">
-                    <div className="flex items-center gap-2 mb-1 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1 rounded w-fit border border-zinc-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/50"></span>
+                <div className="text-zinc-200 mb-2 text-sm">
+                    <div className="flex items-center gap-2 mb-1 text-[10px] font-bold text-blue-300 uppercase tracking-widest bg-blue-900/20 p-1 rounded w-fit border border-blue-700/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></span>
                         Visual Analysis
                     </div>
-                    <div className="opacity-80 pl-3 border-l border-zinc-800 ml-1 leading-snug prose prose-invert prose-xs max-w-none text-zinc-400">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{typeof parsed === 'string' ? parsed : parsed.content}</ReactMarkdown>
+                    <div className="pl-3 border-l border-white/10 ml-1 leading-relaxed prose prose-invert prose-sm max-w-none text-zinc-200 [&_strong]:text-white [&_p]:my-1.5">
+                        <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                                p: ({node, ...props}) => <p className="leading-relaxed mb-2 last:mb-0" {...props} />,
+                                strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />,
+                            }}
+                        >
+                            {typeof parsed === 'string' ? parsed : (parsed.content || step.content)}
+                        </ReactMarkdown>
                     </div>
                 </div>
             );
@@ -158,12 +195,12 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
         if (step.type === 'execution' || parsed.execution_results) {
             const results = parsed.execution_results || parsed;
             return (
-                <div className="text-zinc-300 mb-1.5 text-sm">
-                    <div className="flex items-center gap-2 mb-1 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1 rounded w-fit border border-zinc-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500/50"></span>
+                <div className="text-zinc-200 mb-1.5 text-sm">
+                    <div className="flex items-center gap-2 mb-1 text-[10px] font-bold text-blue-300 uppercase tracking-widest bg-blue-900/20 p-1 rounded w-fit border border-blue-700/30">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></span>
                         Observation
                     </div>
-                    <div className="space-y-1.5 pl-3 border-l border-zinc-800 ml-1">
+                    <div className="space-y-1.5 pl-3 border-l border-white/10 ml-1">
                         {Object.entries(results).map(([key, result]: [string, any]) => {
                             // --- Aggressive JSON Unwrapping ---
                             let data = safeParseJSON(result);
@@ -193,8 +230,8 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
         // --- 5. Tool Call (Step) ---
         if (step.type === 'tool') {
             return (
-                <div className="text-zinc-500 mb-2 pl-3 border-l-2 border-zinc-800/50 border-dashed ml-1">
-                    <span className="font-mono text-[10px] opacity-75 mr-2 uppercase tracking-wider">[{step.toolName}]</span>
+                <div className="text-zinc-200 mb-2 pl-3 border-l-2 border-white/10 border-dashed ml-1">
+                    <span className="font-mono text-[10px] opacity-75 mr-2 uppercase tracking-wider text-blue-300">[{step.toolName}]</span>
                     <span className="text-xs">{step.content}</span>
                 </div>
             )
@@ -203,7 +240,7 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
         // Fallback: If it's a string, render Markdown
         if (isString) {
             return (
-                <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none leading-relaxed">
+                <div className="text-sm text-zinc-200 prose prose-invert prose-sm max-w-none leading-relaxed">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsed}</ReactMarkdown>
                 </div>
             );
@@ -214,7 +251,7 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
     } catch (e) {
         // Render unstructured text with Markdown support
         return (
-            <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none leading-relaxed">
+            <div className="text-sm text-zinc-200 prose prose-invert prose-sm max-w-none leading-relaxed">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{step.content}</ReactMarkdown>
             </div>
         );
@@ -224,21 +261,21 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
 // --- Accordion Component ---
 const LoadingDots = () => (
     <div className="flex space-x-1 items-center px-1 py-2">
-        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></div>
+        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+        <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></div>
     </div>
 );
 
 const ThinkingAccordion: React.FC<{ steps: ThoughtStep[], hasContent?: boolean }> = ({ steps, hasContent }) => {
     const [isOpen, setIsOpen] = useState(true);
 
-    // Auto-collapse when content starts arriving
-    useEffect(() => {
-        if (hasContent && isOpen) {
-            setIsOpen(false);
-        }
-    }, [hasContent]);
+    // Auto-collapse REMOVED as per user feedback ("I think that should not happen")
+    // useEffect(() => {
+    //     if (hasContent && isOpen) {
+    //         setIsOpen(false);
+    //     }
+    // }, [hasContent]);
 
     if (steps.length === 0) return null;
 
@@ -246,32 +283,34 @@ const ThinkingAccordion: React.FC<{ steps: ThoughtStep[], hasContent?: boolean }
     const isThinking = !!activeStep;
 
     return (
-        <div className="mt-1 mb-3 border-l-2 border-zinc-800/50 pl-3 ml-1 py-1">
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                className={clsx(
-                    "flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] transition-all px-2.5 py-1.5 rounded-md border",
-                    isOpen 
-                        ? "bg-zinc-800/50 border-zinc-700/50 text-zinc-400" 
-                        : "bg-zinc-900/30 border-zinc-800/50 text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-400"
-                )}
-            >
-                {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                
-                <div className="flex items-center gap-2">
-                    {isThinking && !hasContent ? (
-                        <div className="flex items-center gap-2">
-                            <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
-                            <span>Processing...</span>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-2">
-                            <Brain className="w-3 h-3 opacity-70" />
-                            <span>Analysis Trace ({steps.length})</span>
-                        </div>
-                    )}
+        <div className="mb-3 bg-white/5 rounded-lg border border-white/5 overflow-hidden">
+            <div className="flex items-center gap-3 px-3 py-2 bg-white/5">
+                {/* Header Label */}
+                <div className="flex items-center gap-2 text-xs text-blue-300 font-medium select-none uppercase tracking-widest">
+                    <Sparkles className="w-3 h-3 text-blue-400" />
+                    <span>EquityPulse AI</span>
                 </div>
-            </button>
+
+                {/* Separator */}
+                <div className="h-3 w-px bg-white/10" />
+
+                {/* Toggle Button */}
+                <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className={clsx(
+                        "flex items-center gap-1.5 text-[10px] uppercase tracking-wider font-bold transition-colors select-none ml-auto",
+                        isOpen ? "text-zinc-200" : "text-zinc-500 hover:text-zinc-200"
+                    )}
+                >
+                    {isThinking && !hasContent ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-blue-400" />
+                    ) : (
+                        <Brain className={clsx("w-3 h-3", isOpen ? "text-blue-400" : "opacity-70")} />
+                    )}
+                    <span>Analysis Trace ({steps.length})</span>
+                    <ChevronDown className={clsx("w-3 h-3 transition-transform", isOpen ? "rotate-180" : "")} />
+                </button>
+            </div>
 
             <AnimatePresence>
                 {isOpen && (
@@ -279,9 +318,9 @@ const ThinkingAccordion: React.FC<{ steps: ThoughtStep[], hasContent?: boolean }
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
+                        className="overflow-hidden bg-[#0a0a0a]/50"
                     >
-                        <div className="pt-4 pb-1 space-y-4 text-sm text-gray-300 font-sans">
+                        <div className="p-4 space-y-4 text-sm text-zinc-200 font-sans">
                             {steps.map((step, idx) => (
                                 <div key={idx} className="relative">
                                     <FormatThought step={step} />
@@ -349,7 +388,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
-    const [plannerSteps, setPlannerSteps] = useState<string[]>([]);
     const [pendingImages, setPendingImages] = useState<string[]>([]);
     const [currentSessionId, setCurrentSessionId] = useState(initialSessionId);
     const [historyOpen, setHistoryOpen] = useState(false);
@@ -410,7 +448,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
         const newSessionId = generateSessionId();
         setCurrentSessionId(newSessionId);
         setMessages([]);
-        setPlannerSteps([]);
         setInputValue('');
         imageUploadRef.current?.clearAll();
         setHistoryOpen(false);
@@ -466,8 +503,19 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
 
     // Scroll to bottom on new messages
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages, plannerSteps, isOpen]);
+        if (messages.length === 0) return;
+
+        // Only scroll if we are streaming OR if a new message was added
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg?.isStreaming || isOpen) {
+            // Only auto-scroll if near bottom or if it's the very start of a response
+            // For now, simpler: scroll to bottom if streaming
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        } else {
+            // If not streaming (e.g. implementation), scroll once
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages.length, isOpen]); // Removed 'messages' content dependency to avoid jitters on every token, only unpredictable length changes
 
     // Auto-resize textarea
     useEffect(() => {
@@ -479,21 +527,22 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
     }, [inputValue]);
 
     const handleTranscription = (text: string) => {
-        setInputValue(prev => {
-            const trimmed = prev.trim();
-            return trimmed ? `${trimmed} ${text}` : text;
-        });
-        // Optional: Auto-focus the input
-        inputRef.current?.focus();
+        const trimmed = inputValue.trim();
+        const fullText = trimmed ? `${trimmed} ${text}` : text;
+
+        setInputValue(fullText);
+        // Auto-send the voice input immediately
+        handleSend(fullText);
     };
 
-    const handleSend = async () => {
-        if (!inputValue.trim() || isLoading) return;
+    const handleSend = async (overrideContent?: string) => {
+        const contentToSend = overrideContent || inputValue;
+        if (!contentToSend.trim() || isLoading) return;
 
         const userMsg: Message = {
             id: Date.now().toString(),
             role: 'user',
-            content: inputValue,
+            content: contentToSend,
             timestamp: new Date(),
             image_urls: pendingImages.length > 0 ? pendingImages : undefined
         };
@@ -503,7 +552,6 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
         setPendingImages([]);
         imageUploadRef.current?.clearAll();
         setIsLoading(true);
-        setPlannerSteps([]);
 
         // Create placeholder for assistant message
         const assistantMsgId = (Date.now() + 1).toString();
@@ -636,7 +684,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                                     if (m.id !== assistantMsgId) return m;
 
                                     // Construct content object based on type to match FormatThought expectations
-                                    let contentObj = {};
+                                    let contentObj: any = {};
                                     if (data.type === 'query_rewrite') {
                                         contentObj = {
                                             rewritten_query: data.rewritten_query,
@@ -651,15 +699,33 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                                         contentObj = { execution_results: data.content };
                                     }
 
-                                    return {
-                                        ...m,
-                                        thoughts: [...(m.thoughts || []), {
-                                            type: 'thought', // Use 'thought' type for rendering
+                                    const thoughts = m.thoughts || [];
+                                    const lastThought = thoughts[thoughts.length - 1];
+
+                                    // If we have a running thought, UPDATE it instead of appending
+                                    if (lastThought && lastThought.type === 'thought' && lastThought.status === 'running') {
+                                        // Replace the running "raw JSON" thought with the structured event
+                                        const updatedThoughts = [...thoughts];
+                                        updatedThoughts[updatedThoughts.length - 1] = {
+                                            type: data.type === 'thought' ? 'thought' : data.type as any, // Use actual type
                                             content: JSON.stringify(contentObj),
                                             status: 'completed',
                                             timestamp: new Date()
-                                        }]
-                                    };
+                                        };
+                                        return { ...m, thoughts: updatedThoughts };
+                                    } else {
+                                        // Fallback: Append new if no running thought (shouldn't happen with correct stream)
+                                        return {
+                                            ...m,
+                                            thoughts: [...thoughts, {
+                                                type: data.type === 'thought' ? 'thought' : data.type as any,
+                                                content: JSON.stringify(contentObj),
+                                                node: data.node,
+                                                status: 'completed',
+                                                timestamp: new Date()
+                                            }]
+                                        };
+                                    }
                                 }));
                             }
 
@@ -862,7 +928,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                             {/* User Header Section (Top Right) */}
                             <div className="flex flex-col items-end mb-4 space-y-2">
                                 {turn.user.map(msg => (
-                                    <div key={msg.id} className="max-w-[80%] bg-zinc-800 border border-zinc-700 text-zinc-100 rounded-2xl rounded-tr-sm px-5 py-3 text-sm leading-relaxed shadow-sm">
+                                    <div key={msg.id} className="max-w-[80%] bg-purple-500/10 border border-purple-500/20 text-purple-100 rounded-2xl rounded-tr-sm px-5 py-3 text-sm leading-relaxed shadow-sm">
                                         {/* Display attached images */}
                                         {msg.image_urls && msg.image_urls.length > 0 && (
                                             <div className="flex flex-wrap gap-2 mb-2">
@@ -885,21 +951,21 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                             {/* Assistant Body Section (Full Width, below User) */}
                             {turn.assistant ? (
                                 <div className="w-full pl-0 md:pl-2">
-                                    <div className="flex items-center gap-2 mb-3 text-xs text-zinc-400 font-medium select-none uppercase tracking-widest">
-                                        <Sparkles className="w-3 h-3 text-zinc-500" />
-                                        <span>EquityPulse AI</span>
-                                    </div>
-
-                                    {/* Reasoning */}
-                                    {turn.assistant.thoughts && turn.assistant.thoughts.length > 0 && (
-                                        <ThinkingAccordion 
-                                            steps={turn.assistant.thoughts} 
-                                            hasContent={!!turn.assistant.content && turn.assistant.content.trim().length > 0} 
+                                    {/* Header & Reasoning */}
+                                    {turn.assistant.thoughts && turn.assistant.thoughts.length > 0 ? (
+                                        <ThinkingAccordion
+                                            steps={turn.assistant.thoughts}
+                                            hasContent={!!turn.assistant.content && turn.assistant.content.trim().length > 0}
                                         />
+                                    ) : (
+                                        <div className="flex items-center gap-2 mb-3 text-xs text-blue-300 font-medium select-none uppercase tracking-widest">
+                                            <Sparkles className="w-3 h-3 text-blue-400" />
+                                            <span>EquityPulse AI</span>
+                                        </div>
                                     )}
 
                                     {/* Content */}
-                                    <div className="prose prose-invert prose-p:my-3 prose-sm max-w-none break-words overflow-hidden text-zinc-300">
+                                    <div className="prose prose-invert prose-p:my-3 prose-sm max-w-none break-words overflow-hidden text-zinc-200">
                                         {!turn.assistant.content && turn.assistant.isStreaming && (!turn.assistant.thoughts || turn.assistant.thoughts.length === 0) ? (
                                             <LoadingDots />
                                         ) : (
@@ -913,7 +979,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                                                     p: ({ node, ...props }) => <p className="mb-3 last:mb-0 leading-7 text-sm" {...props} />,
                                                     pre: ({ node, ...props }) => (
                                                         <div className="overflow-x-auto w-full my-4 bg-zinc-900/50 p-3 rounded-md border border-white/5">
-                                                            <pre className="text-xs font-mono text-zinc-300" {...props} />
+                                                            <pre className="text-xs font-mono text-zinc-200" {...props} />
                                                         </div>
                                                     ),
                                                     code: ({ node, ...props }) => <code className="bg-white/5 px-1.5 py-0.5 rounded text-xs font-mono text-zinc-200 border border-white/5" {...props} />
@@ -933,10 +999,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                                 </div>
                             ) : (
                                 <div className="w-full flex flex-col items-start gap-1 pl-2">
-                                    <div className="flex items-center gap-2 text-zinc-500">
+                                    <div className="flex items-center gap-2 text-blue-400">
                                         <LoadingDots />
                                     </div>
-                                    <span className="text-[10px] text-zinc-500 font-medium tracking-wider uppercase ml-1">Analyzing Market Data...</span>
+                                    <span className="text-[10px] text-blue-400 font-medium tracking-wider uppercase ml-1">Analyzing Market Data...</span>
                                 </div>
                             )}
                         </div>
@@ -969,7 +1035,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                         style={{ height: 'auto', minHeight: '40px' }}
                     />
                     <button
-                        onClick={handleSend}
+                        onClick={() => handleSend()}
                         disabled={isLoading || !inputValue.trim()}
                         className={clsx(
                             "p-2 rounded-lg transition-all mb-0.5",

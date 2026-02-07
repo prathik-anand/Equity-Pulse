@@ -34,7 +34,7 @@ const SmartDataRenderer: React.FC<{ data: any; depth?: number; label?: string }>
         return (
             <div className="flex items-start gap-2 text-sm leading-relaxed">
                 {label && <span className="text-zinc-500 font-medium min-w-[120px]">{label}:</span>}
-                <span className="text-zinc-300 break-words">{String(data)}</span>
+                <span className="text-zinc-500 break-words">{String(data)}</span>
             </div>
         );
     }
@@ -44,7 +44,7 @@ const SmartDataRenderer: React.FC<{ data: any; depth?: number; label?: string }>
         if (data.length === 0) return null;
         return (
             <div className="mt-0.5 mb-1.5">
-                {label && <div className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mb-0.5">{label}</div>}
+                {label && <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-0.5">{label}</div>}
                 <ul className="space-y-0.5 pl-2 border-l border-zinc-700/50">
                     {data.map((item, i) => (
                         <li key={i} className="text-sm">
@@ -71,7 +71,7 @@ const SmartDataRenderer: React.FC<{ data: any; depth?: number; label?: string }>
                         <ChevronDown className="w-3 h-3 text-zinc-500 group-hover:text-zinc-300" /> :
                         <ChevronRight className="w-3 h-3 text-zinc-500 group-hover:text-zinc-300" />
                     }
-                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider group-hover:text-zinc-200">
+                    <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider group-hover:text-zinc-400">
                         {label.replace(/_/g, ' ')}
                     </span>
                 </button>
@@ -88,6 +88,60 @@ const SmartDataRenderer: React.FC<{ data: any; depth?: number; label?: string }>
                         <div className={clsx("space-y-1", label && "pl-3 border-l-2 border-zinc-800/50 py-0.5")}>
                             {keys.map(key => (
                                 <SmartDataRenderer key={key} data={data[key]} depth={depth + 1} label={key} />
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
+const CollapsibleReport: React.FC<{ sections: any[] }> = ({ sections }) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    
+    // Determine a summary title
+    const sectionNames = sections.map(s => s.section?.replace(/_/g, ' ')).filter(Boolean);
+    const title = sectionNames.length > 0 
+        ? `Report Loaded: ${sectionNames.slice(0, 2).join(', ')}${sectionNames.length > 2 ? ` +${sectionNames.length - 2} more` : ''}`
+        : `Report Content Loaded (${sections.length} sections)`;
+
+    return (
+        <div className="mt-1">
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex items-center gap-2 text-xs text-zinc-500 hover:text-zinc-300 transition-colors w-full p-2 bg-black/20 hover:bg-white/5 border border-white/5 rounded-md group text-left"
+            >
+                {isExpanded ? <ChevronDown className="w-4 h-4 shrink-0" /> : <ChevronRight className="w-4 h-4 shrink-0" />}
+                <div className="flex flex-col">
+                    <span className="font-semibold uppercase tracking-wide text-[10px] text-emerald-500/80 group-hover:text-emerald-400">
+                        Report Data
+                    </span>
+                    <span className="truncate opacity-80">{title}</span>
+                </div>
+            </button>
+            
+            <AnimatePresence>
+                {isExpanded && (
+                    <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                    >
+                        <div className="space-y-2.5 mt-2 pt-1">
+                            {sections.map((section: any, idx: number) => (
+                                <div key={idx} className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
+                                    <div className="bg-white/5 px-2 py-1.5 border-b border-white/5 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+                                        <span className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wide">
+                                            {section.section?.replace(/_/g, ' ') || 'Usage'}
+                                        </span>
+                                    </div>
+                                    <div className="p-2">
+                                        <SmartDataRenderer data={section.content} />
+                                    </div>
+                                </div>
                             ))}
                         </div>
                     </motion.div>
@@ -116,7 +170,7 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
                     <Search className="w-3 h-3" />
                     <span>Search Results</span>
                 </div>
-                <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none bg-black/20 p-2 rounded-md border border-white/5">
+                <div className="text-sm text-zinc-500 prose prose-invert prose-sm max-w-none bg-black/20 p-2 rounded-md border border-white/5">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {typeof parsedData === 'string' ? parsedData : JSON.stringify(parsedData, null, 2)}
                     </ReactMarkdown>
@@ -138,7 +192,7 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
                     <div className="grid gap-1.5">
                         {articles.slice(0, 3).map((article: any, i: number) => (
                             <a key={i} href={article.link} target="_blank" rel="noopener noreferrer" className="block group p-2 bg-black/20 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-lg transition-all">
-                                <div className="font-medium text-xs text-zinc-200 group-hover:text-sky-400 transition-colors line-clamp-2">{article.title}</div>
+                                <div className="font-medium text-xs text-zinc-400 group-hover:text-zinc-300 transition-colors line-clamp-2">{article.title}</div>
                                 <div className="flex items-center gap-2 mt-1 text-[10px] text-zinc-500">
                                     <span className="truncate max-w-[100px]">{article.publisher}</span>
                                     <span>•</span>
@@ -174,12 +228,12 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
 
         // Robust unpacking: Try to find the array of sections
         let sections = parsedData;
-        
+
         // 1. If it's a string, try to parse it again (double encoding protection)
         if (typeof sections === 'string') {
-            try { sections = JSON.parse(sections); } catch(e) {}
+            try { sections = JSON.parse(sections); } catch (e) { }
         }
-        
+
         // 2. If it's an object with a wrapper key, unwrap it
         if (!Array.isArray(sections) && typeof sections === 'object' && sections !== null) {
             if (Array.isArray(sections.content)) sections = sections.content;
@@ -190,23 +244,7 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
 
         // Handle Array of Sections (New Format)
         if (Array.isArray(sections)) {
-            return (
-                <div className="space-y-2.5 mt-1">
-                    {sections.map((section: any, idx: number) => (
-                        <div key={idx} className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
-                            <div className="bg-white/5 px-2 py-1.5 border-b border-white/5 flex items-center gap-2">
-                                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                <span className="text-[10px] font-semibold text-zinc-300 uppercase tracking-wide">
-                                    {section.section?.replace(/_/g, ' ') || 'Usage'}
-                                </span>
-                            </div>
-                            <div className="p-2">
-                                <SmartDataRenderer data={section.content} />
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            );
+            return <CollapsibleReport sections={sections} />;
         }
 
         // Fallback for old string format (Try to render markdown)
@@ -247,7 +285,7 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
     }
 
     return (
-        <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none break-words">
+        <div className="text-sm text-zinc-500 prose prose-invert prose-sm max-w-none break-words">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{String(parsedData)}</ReactMarkdown>
         </div>
     );
