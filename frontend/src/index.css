@@ -40,7 +40,31 @@
     /* Fallback safe color */
     border-color: hsl(var(--border) / 1);
     /* Use CSS variable directly */
+    border-color: hsl(var(--border) / 1);
+    /* Use CSS variable directly */
   }
+
+  /* Force word wrapping globally to prevent horizontal scroll */
+  p, span, div {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  pre, code {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+  }
+
+  /* Hide scrollbars but allow scrolling functionality */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
 
   body {
     @apply bg-background text-foreground font-sans antialiased;

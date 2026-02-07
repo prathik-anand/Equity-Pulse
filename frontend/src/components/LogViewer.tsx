@@ -50,7 +50,7 @@ const formatToolInput = (args: any): string => {
     }
 };
 
-const ReasoningStep: React.FC<{ log: LogEntry, previousLog?: LogEntry }> = ({ log, previousLog }) => {
+const ReasoningStep: React.FC<{ log: LogEntry }> = ({ log }) => {
     const isThought = log.type === 'thought';
     const isTool = log.type === 'tool';
     const isError = log.type === 'error';
@@ -234,7 +234,6 @@ const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isPr
                                         <ReasoningStep
                                             key={idx}
                                             log={log}
-                                            previousLog={logs[idx - 1]}
                                         />
                                     ))
                                 )}

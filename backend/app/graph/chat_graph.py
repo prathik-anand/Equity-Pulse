@@ -275,11 +275,17 @@ async def executor_node(state: ChatState):
             found_data = []
             for sec_name, content in report_context.items():
                 if section.lower() in sec_name.lower():
-                    found_data.append(f"--- {sec_name} ---\n{str(content)[:3000]}")
+                    found_data.append({"section": sec_name, "content": content})
             if found_data:
-                execution_result = "\n".join(found_data)
+                # Return valid JSON string of the list
+                execution_result = json.dumps(found_data)
             else:
-                execution_result = f"Section '{section}' not found. Available: {list(report_context.keys())}"
+                execution_result = json.dumps(
+                    {
+                        "error": f"Section '{section}' not found",
+                        "available_sections": list(report_context.keys()),
+                    }
+                )
 
         elif tool_name == "web_search":
             query = args.get("query", "")

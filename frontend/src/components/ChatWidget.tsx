@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare, X, Minimize2, Maximize2, Loader2, Sparkles, Brain, ChevronDown, ChevronRight, Search, Plus, Clock } from 'lucide-react';
+import { Send, MessageSquare, X, Minimize2, Maximize2, Loader2, Sparkles, Brain, ChevronDown, ChevronRight, Plus, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -7,6 +7,7 @@ import clsx from 'clsx';
 import { API_BASE_URL } from '../api';
 import VoiceInput from './VoiceInput';
 import ImageUpload, { type ImageUploadRef } from './ImageUpload';
+import ToolOutputRenderer from './ToolOutputRenderer';
 
 interface ChatWidgetProps {
     sessionId: string;
@@ -19,7 +20,7 @@ interface ChatWidgetProps {
 }
 
 interface ThoughtStep {
-    type: 'thought' | 'tool';
+    type: 'thought' | 'tool' | 'plan' | 'query_rewrite' | 'image_analysis' | 'execution' | 'tool_start' | 'tool_end';
     content: string;
     toolName?: string;
     toolInput?: string;
@@ -55,48 +56,46 @@ const safeParseJSON = (input: any): any => {
 };
 
 // Helper to format thought content (Text/Paragraph style)
-const FormatThought: React.FC<{ content: string }> = ({ content }) => {
+const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
     try {
         // Use recursive parser to handle double-encoded strings
-        const parsed = safeParseJSON(content);
-
-        // If after parsing we still have a string, it's unstructured text -> Render Markdown
-        if (typeof parsed === 'string') {
-            return (
-                <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none leading-relaxed">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsed}</ReactMarkdown>
-                </div>
-            );
-        }
+        const parsed = safeParseJSON(step.content);
+        // Fallback for empty/string content if parsing fails or is just a string
+        const isString = typeof parsed === 'string';
 
         // --- 1. Execution Plan ---
-        if (parsed.plan) {
+        if (step.type === 'plan' || parsed.plan) {
+            const planData = parsed.plan || parsed;
+            // Handle if planData is the array itself or an object with plan key
+            const steps = Array.isArray(planData) ? planData : (planData.plan || []);
+
+            if (!Array.isArray(steps) && isString) return <div className="text-zinc-500 italic">{String(parsed)}</div>;
+
             return (
-                <div className="text-zinc-300/90 mb-3">
-                    <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1.5 rounded w-fit border border-zinc-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                <div className="text-zinc-300/90 mb-2">
+                    <div className="flex items-center gap-2 mb-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1 rounded w-fit border border-zinc-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
                         Execution Plan
                     </div>
-                    <ul className="space-y-2 text-sm pl-1 border-l border-zinc-800 ml-1">
-                        {parsed.plan.map((step: any, i: number) => {
+                    <ul className="space-y-1 text-sm pl-1 border-l border-zinc-800 ml-1">
+                        {Array.isArray(steps) && steps.map((s: any, i: number) => {
                             // Map technical tool names to human actions
-                            let action = step.tool.replace(/_/g, ' ');
+                            let action = s.tool?.replace(/_/g, ' ') || 'Action';
                             let details = '';
 
-                            if (step.tool === 'web_search') action = "Searching web for";
-                            else if (step.tool === 'get_company_news') action = "Checking news regarding";
-                            else if (step.tool === 'search_market_trends') action = "Analyzing trends for";
-                            else if (step.tool === 'get_financials') action = "Fetching financials for";
-                            else if (step.tool === 'get_price_history_stats') action = "Pulling price stats for";
-                            else if (step.tool === 'param_extractor') action = "Extracting parameters";
-                            else if (step.tool === 'search_governance_issues') action = "Checking governance for";
-                            else if (step.tool === 'read_report') action = "Reading report section";
+                            if (s.tool === 'web_search') action = "Searching web for";
+                            else if (s.tool === 'get_company_news') action = "Checking news regarding";
+                            else if (s.tool === 'search_market_trends') action = "Analyzing trends for";
+                            else if (s.tool === 'get_financials') action = "Fetching financials for";
+                            else if (s.tool === 'get_price_history_stats') action = "Pulling price stats for";
+                            else if (s.tool === 'param_extractor') action = "Extracting parameters";
+                            else if (s.tool === 'search_governance_issues') action = "Checking governance for";
+                            else if (s.tool === 'read_report') action = "Reading report section";
 
-                            if (step.args) {
-                                if (step.args.query) details = `"${step.args.query}"`;
-                                else if (step.args.section) details = step.args.section;
-                                else if (step.args.ticker) details = step.args.ticker;
-                            }
+                            const args = s.args || {};
+                            if (args.query) details = `"${args.query}"`;
+                            else if (args.section) details = args.section;
+                            else if (args.ticker) details = args.ticker;
 
                             return (
                                 <li key={i} className="flex gap-3 items-start pl-3 text-zinc-400">
@@ -114,19 +113,19 @@ const FormatThought: React.FC<{ content: string }> = ({ content }) => {
         }
 
         // --- 2. Query Rewrite ---
-        if (parsed.rewritten_query) {
+        if (step.type === 'query_rewrite' || parsed.rewritten_query) {
             return (
-                <div className="text-zinc-300 mb-3 text-sm">
-                    <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1.5 rounded w-fit border border-zinc-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                <div className="text-zinc-300 mb-2 text-sm">
+                    <div className="flex items-center gap-2 mb-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1 rounded w-fit border border-zinc-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500/50"></span>
                         Context Analysis
                     </div>
                     <div className="pl-3 border-l border-zinc-800 ml-1">
-                        <span className="text-zinc-500 text-xs uppercase tracking-wide">Intent</span>
-                        <div className="italic text-zinc-200 mt-1 mb-2">"{parsed.rewritten_query}"</div>
+                        <span className="text-zinc-500 text-[10px] uppercase tracking-wide">Intent</span>
+                        <div className="italic text-zinc-200 mt-0.5 mb-1">"{parsed.rewritten_query || step.content}"</div>
 
                         {parsed.sub_queries && parsed.sub_queries.length > 0 && (
-                            <div className="mt-2 text-xs grid gap-1">
+                            <div className="mt-1 text-xs grid gap-0.5">
                                 {parsed.sub_queries.map((q: string, i: number) => (
                                     <div key={i} className="flex gap-2 text-zinc-500">
                                         <span>•</span>
@@ -141,30 +140,31 @@ const FormatThought: React.FC<{ content: string }> = ({ content }) => {
         }
 
         // --- 3. Image Analysis ---
-        if (parsed.type === "image_analysis") {
+        if (step.type === 'image_analysis') {
             return (
-                <div className="text-zinc-300 mb-3 text-sm">
-                    <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1.5 rounded w-fit border border-zinc-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                <div className="text-zinc-300 mb-1.5 text-sm">
+                    <div className="flex items-center gap-2 mb-1 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1 rounded w-fit border border-zinc-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500/50"></span>
                         Visual Analysis
                     </div>
-                    <div className="opacity-80 pl-3 border-l border-zinc-800 ml-1 leading-relaxed prose prose-invert prose-xs max-w-none text-zinc-400">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsed.content}</ReactMarkdown>
+                    <div className="opacity-80 pl-3 border-l border-zinc-800 ml-1 leading-snug prose prose-invert prose-xs max-w-none text-zinc-400">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{typeof parsed === 'string' ? parsed : parsed.content}</ReactMarkdown>
                     </div>
                 </div>
             );
         }
 
         // --- 4. Tool Execution Results (Generic Wrapper) ---
-        if (parsed.execution_results) {
+        if (step.type === 'execution' || parsed.execution_results) {
+            const results = parsed.execution_results || parsed;
             return (
-                <div className="text-zinc-300 mb-3 text-sm">
-                    <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1.5 rounded w-fit border border-zinc-800">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                <div className="text-zinc-300 mb-1.5 text-sm">
+                    <div className="flex items-center gap-2 mb-1 text-[10px] font-bold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1 rounded w-fit border border-zinc-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-sky-500/50"></span>
                         Observation
                     </div>
-                    <div className="space-y-4 pl-3 border-l border-zinc-800 ml-1">
-                        {Object.entries(parsed.execution_results).map(([key, result]: [string, any]) => {
+                    <div className="space-y-1.5 pl-3 border-l border-zinc-800 ml-1">
+                        {Object.entries(results).map(([key, result]: [string, any]) => {
                             // --- Aggressive JSON Unwrapping ---
                             let data = safeParseJSON(result);
 
@@ -176,13 +176,12 @@ const FormatThought: React.FC<{ content: string }> = ({ content }) => {
                                 }
                             }
 
+                            // Clean tool name from step_N_toolname
+                            const cleanToolName = key.replace(/^step_\d+_/, '');
+
                             return (
                                 <div key={key}>
-                                    {/* Tool-Specific Renderers */}
-                                    {typeof ToolOutputRenderer !== 'undefined' ?
-                                        <ToolOutputRenderer data={data} toolName={key} /> :
-                                        <pre className="text-xs text-zinc-500 whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
-                                    }
+                                    <ToolOutputRenderer data={data} toolName={cleanToolName} />
                                 </div>
                             );
                         })}
@@ -191,16 +190,32 @@ const FormatThought: React.FC<{ content: string }> = ({ content }) => {
             );
         }
 
-        // Fallback for direct tool outputs (not wrapped in execution_results)
-        return typeof ToolOutputRenderer !== 'undefined' ?
-            <ToolOutputRenderer data={parsed} /> :
-            <div className="text-sm text-zinc-300">{JSON.stringify(parsed)}</div>;
+        // --- 5. Tool Call (Step) ---
+        if (step.type === 'tool') {
+            return (
+                <div className="text-zinc-500 mb-2 pl-3 border-l-2 border-zinc-800/50 border-dashed ml-1">
+                    <span className="font-mono text-[10px] opacity-75 mr-2 uppercase tracking-wider">[{step.toolName}]</span>
+                    <span className="text-xs">{step.content}</span>
+                </div>
+            )
+        }
 
+        // Fallback: If it's a string, render Markdown
+        if (isString) {
+            return (
+                <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none leading-relaxed">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsed}</ReactMarkdown>
+                </div>
+            );
+        }
+
+        // Fallback for objects: Tool Renderer
+        return <ToolOutputRenderer data={parsed} />;
     } catch (e) {
         // Render unstructured text with Markdown support
         return (
             <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none leading-relaxed">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{step.content}</ReactMarkdown>
             </div>
         );
     }
@@ -216,38 +231,38 @@ const ThinkingAccordion: React.FC<{ steps: ThoughtStep[] }> = ({ steps }) => {
     const isThinking = !!activeStep;
 
     return (
-        <div className="mt-2 mb-2 border border-white/10 rounded-lg overflow-hidden bg-black/20">
+        <div className="mt-1 mb-1 border-l-2 border-zinc-800 pl-3 ml-1 py-1">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-white/50 hover:bg-white/5 transition-colors"
+                className="w-full flex items-center justify-between text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors group"
             >
                 <div className="flex items-center gap-2">
                     {isThinking ? (
-                        <Loader2 className="w-3 h-3 animate-spin text-purple-400" />
+                        <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />
                     ) : (
-                        <Brain className="w-3 h-3 text-purple-400" />
+                        <Brain className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
                     )}
-                    <span>
+                    <span className="uppercase tracking-widest text-[10px]">
                         {isThinking
-                            ? "Reasoning..."
-                            : `Reasoned for ${steps.length} steps`}
+                            ? "Processing..."
+                            : `Analysis Complete (${steps.length} steps)`}
                     </span>
                 </div>
-                {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                {isOpen ? <ChevronDown className="w-3 h-3 opacity-50" /> : <ChevronRight className="w-3 h-3 opacity-50" />}
             </button>
 
             <AnimatePresence>
                 {isOpen && (
                     <motion.div
-                        initial={{ height: 0 }}
-                        animate={{ height: 'auto' }}
-                        exit={{ height: 0 }}
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                     >
-                        <div className="px-4 py-3 space-y-4 bg-black/10 text-sm text-gray-300 font-sans border-t border-white/5 max-h-[400px] overflow-y-auto">
+                        <div className="pt-3 space-y-3 text-sm text-gray-300 font-sans">
                             {steps.map((step, idx) => (
-                                <div key={idx} className="relative pl-3 border-l-2 border-white/10 ml-1">
-                                    <FormatThought content={step.content} />
+                                <div key={idx} className="relative">
+                                    <FormatThought step={step} />
                                 </div>
                             ))}
                         </div>
@@ -350,7 +365,13 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                     content: msg.content,
                     timestamp: new Date(msg.created_at),
                     image_urls: msg.image_urls,
-                    thoughts: msg.thoughts || [] // Map retrieved thoughts
+                    thoughts: (msg.thoughts || []).map((t: any) => {
+                        // Hydrate 'content' for tool steps if missing (DB persistence mismatch)
+                        if (t.type === 'tool' && !t.content && t.toolInput) {
+                            return { ...t, content: formatToolInput(t.toolName || '', t.toolInput) };
+                        }
+                        return t;
+                    })
                 })));
                 setCurrentSessionId(sid);
                 setHistoryOpen(false);
@@ -815,11 +836,11 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                     }
 
                     return turns.map((turn, idx) => (
-                        <div key={turn.assistant?.id || `turn-${idx}`} className="w-full bg-white/5 border border-white/5 rounded-2xl p-3 mb-4 backdrop-blur-sm">
+                        <div key={turn.assistant?.id || `turn-${idx}`} className="w-full bg-transparent border-b border-white/5 p-4 mb-2">
                             {/* User Header Section (Top Right) */}
-                            <div className="flex flex-col items-end mb-3 space-y-2">
+                            <div className="flex flex-col items-end mb-4 space-y-2">
                                 {turn.user.map(msg => (
-                                    <div key={msg.id} className="max-w-[70%] bg-indigo-600/20 border border-indigo-500/30 text-indigo-100 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm backdrop-blur-sm">
+                                    <div key={msg.id} className="max-w-[80%] bg-zinc-800 border border-zinc-700 text-zinc-100 rounded-2xl rounded-tr-sm px-5 py-3 text-sm leading-relaxed shadow-sm">
                                         {/* Display attached images */}
                                         {msg.image_urls && msg.image_urls.length > 0 && (
                                             <div className="flex flex-wrap gap-2 mb-2">
@@ -828,26 +849,23 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                                                         key={imgIdx}
                                                         src={url}
                                                         alt={`Attachment ${imgIdx + 1}`}
-                                                        className="w-20 h-20 object-cover rounded-lg border border-white/20 cursor-pointer hover:opacity-80 transition-opacity"
+                                                        className="w-20 h-20 object-cover rounded-lg border border-white/10 cursor-pointer hover:opacity-80 transition-opacity"
                                                         onClick={() => setPreviewImage(url)}
                                                     />
                                                 ))}
                                             </div>
                                         )}
                                         {msg.content}
-                                        <div className="text-[10px] text-indigo-300/50 mt-1 text-right">
-                                            {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </div>
                                     </div>
                                 ))}
                             </div>
 
                             {/* Assistant Body Section (Full Width, below User) */}
                             {turn.assistant ? (
-                                <div className="w-[85%] bg-slate-900/50 rounded-xl p-4 border border-white/5 shadow-inner">
-                                    <div className="flex items-center gap-2 mb-3 text-xs text-indigo-400 font-medium select-none">
-                                        <Sparkles className="w-3.5 h-3.5" />
-                                        <span>AI Analyst</span>
+                                <div className="w-full pl-0 md:pl-2">
+                                    <div className="flex items-center gap-2 mb-3 text-xs text-zinc-400 font-medium select-none uppercase tracking-widest">
+                                        <Sparkles className="w-3 h-3 text-zinc-500" />
+                                        <span>EquityPulse AI</span>
                                     </div>
 
                                     {/* Reasoning */}
@@ -856,20 +874,21 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                                     )}
 
                                     {/* Content */}
-                                    <div className="prose prose-invert prose-p:my-1 prose-sm max-w-none break-words overflow-hidden text-slate-300">
+                                    <div className="prose prose-invert prose-p:my-3 prose-sm max-w-none break-words overflow-hidden text-zinc-300">
                                         <ReactMarkdown
                                             components={{
-                                                h3: ({ node, ...props }) => <h3 className="text-lg font-bold text-white mt-4 mb-2 border-b border-white/10 pb-1" {...props} />,
-                                                strong: ({ node, ...props }) => <strong className="font-bold text-indigo-200" {...props} />,
-                                                ul: ({ node, ...props }) => <ul className="list-disc pl-4 space-y-1 my-2 marker:text-indigo-500" {...props} />,
-                                                li: ({ node, ...props }) => <li className="pl-1 text-sm leading-relaxed" {...props} />,
-                                                p: ({ node, ...props }) => <p className="mb-3 last:mb-0 leading-relaxed text-sm" {...props} />,
+                                                h3: ({ node, ...props }) => <h3 className="text-sm font-bold text-white mt-6 mb-3 uppercase tracking-wide" {...props} />,
+                                                strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
+                                                ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-2 my-3 marker:text-zinc-500" {...props} />,
+                                                ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-2 my-3 marker:text-zinc-500" {...props} />,
+                                                li: ({ node, ...props }) => <li className="pl-1 text-sm leading-7" {...props} />,
+                                                p: ({ node, ...props }) => <p className="mb-3 last:mb-0 leading-7 text-sm" {...props} />,
                                                 pre: ({ node, ...props }) => (
-                                                    <div className="overflow-x-auto w-full my-3 bg-black/30 p-3 rounded-lg border border-white/10 shadow-sm">
-                                                        <pre className="text-xs font-mono" {...props} />
+                                                    <div className="overflow-x-auto w-full my-4 bg-zinc-900/50 p-3 rounded-md border border-white/5">
+                                                        <pre className="text-xs font-mono text-zinc-300" {...props} />
                                                     </div>
                                                 ),
-                                                code: ({ node, ...props }) => <code className="bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono text-indigo-200" {...props} />
+                                                code: ({ node, ...props }) => <code className="bg-white/5 px-1.5 py-0.5 rounded text-xs font-mono text-zinc-200 border border-white/5" {...props} />
                                             }}
                                             remarkPlugins={[remarkGfm]}
                                         >
@@ -877,16 +896,16 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                                         </ReactMarkdown>
                                     </div>
 
-                                    <div className="mt-3 pt-3 border-t border-white/5 flex justify-end">
-                                        <span className="text-[10px] text-white/20">
-                                            {turn.assistant.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    <div className="mt-4 pt-2 flex justify-start">
+                                        <span className="text-[10px] text-zinc-600 font-mono">
+                                            GENERATED AT {turn.assistant.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                         </span>
                                     </div>
                                 </div>
                             ) : (
-                                <div className="w-full bg-slate-900/30 rounded-xl p-4 border border-white/5 border-dashed animate-pulse flex items-center gap-2 text-white/20">
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                    <span className="text-sm">Generating response...</span>
+                                <div className="w-full flex items-center gap-2 text-zinc-500 pl-2 animate-pulse">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
+                                    <span className="text-xs font-medium tracking-wider uppercase">Analyzing Market Data...</span>
                                 </div>
                             )}
                         </div>
