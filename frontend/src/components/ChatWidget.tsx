@@ -222,8 +222,23 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
 };
 
 // --- Accordion Component ---
-const ThinkingAccordion: React.FC<{ steps: ThoughtStep[] }> = ({ steps }) => {
+const LoadingDots = () => (
+    <div className="flex space-x-1 items-center px-1 py-2">
+        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+        <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></div>
+    </div>
+);
+
+const ThinkingAccordion: React.FC<{ steps: ThoughtStep[], hasContent?: boolean }> = ({ steps, hasContent }) => {
     const [isOpen, setIsOpen] = useState(true);
+
+    // Auto-collapse when content starts arriving
+    useEffect(() => {
+        if (hasContent && isOpen) {
+            setIsOpen(false);
+        }
+    }, [hasContent]);
 
     if (steps.length === 0) return null;
 
@@ -231,24 +246,31 @@ const ThinkingAccordion: React.FC<{ steps: ThoughtStep[] }> = ({ steps }) => {
     const isThinking = !!activeStep;
 
     return (
-        <div className="mt-1 mb-1 border-l-2 border-zinc-800 pl-3 ml-1 py-1">
+        <div className="mt-1 mb-3 border-l-2 border-zinc-800/50 pl-3 ml-1 py-1">
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="w-full flex items-center justify-between text-xs font-medium text-zinc-500 hover:text-zinc-300 transition-colors group"
+                className={clsx(
+                    "flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] transition-all px-2.5 py-1.5 rounded-md border",
+                    isOpen 
+                        ? "bg-zinc-800/50 border-zinc-700/50 text-zinc-400" 
+                        : "bg-zinc-900/30 border-zinc-800/50 text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-400"
+                )}
             >
+                {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                
                 <div className="flex items-center gap-2">
-                    {isThinking ? (
-                        <Loader2 className="w-3 h-3 animate-spin text-zinc-400" />
+                    {isThinking && !hasContent ? (
+                        <div className="flex items-center gap-2">
+                            <Loader2 className="w-3 h-3 animate-spin text-indigo-400" />
+                            <span>Processing...</span>
+                        </div>
                     ) : (
-                        <Brain className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 transition-colors" />
+                        <div className="flex items-center gap-2">
+                            <Brain className="w-3 h-3 opacity-70" />
+                            <span>Analysis Trace ({steps.length})</span>
+                        </div>
                     )}
-                    <span className="uppercase tracking-widest text-[10px]">
-                        {isThinking
-                            ? "Processing..."
-                            : `Analysis Complete (${steps.length} steps)`}
-                    </span>
                 </div>
-                {isOpen ? <ChevronDown className="w-3 h-3 opacity-50" /> : <ChevronRight className="w-3 h-3 opacity-50" />}
             </button>
 
             <AnimatePresence>
@@ -259,7 +281,7 @@ const ThinkingAccordion: React.FC<{ steps: ThoughtStep[] }> = ({ steps }) => {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                     >
-                        <div className="pt-3 space-y-3 text-sm text-gray-300 font-sans">
+                        <div className="pt-4 pb-1 space-y-4 text-sm text-gray-300 font-sans">
                             {steps.map((step, idx) => (
                                 <div key={idx} className="relative">
                                     <FormatThought step={step} />
@@ -870,30 +892,37 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
 
                                     {/* Reasoning */}
                                     {turn.assistant.thoughts && turn.assistant.thoughts.length > 0 && (
-                                        <ThinkingAccordion steps={turn.assistant.thoughts} />
+                                        <ThinkingAccordion 
+                                            steps={turn.assistant.thoughts} 
+                                            hasContent={!!turn.assistant.content && turn.assistant.content.trim().length > 0} 
+                                        />
                                     )}
 
                                     {/* Content */}
                                     <div className="prose prose-invert prose-p:my-3 prose-sm max-w-none break-words overflow-hidden text-zinc-300">
-                                        <ReactMarkdown
-                                            components={{
-                                                h3: ({ node, ...props }) => <h3 className="text-sm font-bold text-white mt-6 mb-3 uppercase tracking-wide" {...props} />,
-                                                strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
-                                                ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-2 my-3 marker:text-zinc-500" {...props} />,
-                                                ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-2 my-3 marker:text-zinc-500" {...props} />,
-                                                li: ({ node, ...props }) => <li className="pl-1 text-sm leading-7" {...props} />,
-                                                p: ({ node, ...props }) => <p className="mb-3 last:mb-0 leading-7 text-sm" {...props} />,
-                                                pre: ({ node, ...props }) => (
-                                                    <div className="overflow-x-auto w-full my-4 bg-zinc-900/50 p-3 rounded-md border border-white/5">
-                                                        <pre className="text-xs font-mono text-zinc-300" {...props} />
-                                                    </div>
-                                                ),
-                                                code: ({ node, ...props }) => <code className="bg-white/5 px-1.5 py-0.5 rounded text-xs font-mono text-zinc-200 border border-white/5" {...props} />
-                                            }}
-                                            remarkPlugins={[remarkGfm]}
-                                        >
-                                            {turn.assistant.content || (turn.assistant.isStreaming ? ' ' : '')}
-                                        </ReactMarkdown>
+                                        {!turn.assistant.content && turn.assistant.isStreaming && (!turn.assistant.thoughts || turn.assistant.thoughts.length === 0) ? (
+                                            <LoadingDots />
+                                        ) : (
+                                            <ReactMarkdown
+                                                components={{
+                                                    h3: ({ node, ...props }) => <h3 className="text-sm font-bold text-white mt-6 mb-3 uppercase tracking-wide" {...props} />,
+                                                    strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
+                                                    ul: ({ node, ...props }) => <ul className="list-disc pl-5 space-y-2 my-3 marker:text-zinc-500" {...props} />,
+                                                    ol: ({ node, ...props }) => <ol className="list-decimal pl-5 space-y-2 my-3 marker:text-zinc-500" {...props} />,
+                                                    li: ({ node, ...props }) => <li className="pl-1 text-sm leading-7" {...props} />,
+                                                    p: ({ node, ...props }) => <p className="mb-3 last:mb-0 leading-7 text-sm" {...props} />,
+                                                    pre: ({ node, ...props }) => (
+                                                        <div className="overflow-x-auto w-full my-4 bg-zinc-900/50 p-3 rounded-md border border-white/5">
+                                                            <pre className="text-xs font-mono text-zinc-300" {...props} />
+                                                        </div>
+                                                    ),
+                                                    code: ({ node, ...props }) => <code className="bg-white/5 px-1.5 py-0.5 rounded text-xs font-mono text-zinc-200 border border-white/5" {...props} />
+                                                }}
+                                                remarkPlugins={[remarkGfm]}
+                                            >
+                                                {turn.assistant.content || (turn.assistant.isStreaming ? ' ' : '')}
+                                            </ReactMarkdown>
+                                        )}
                                     </div>
 
                                     <div className="mt-4 pt-2 flex justify-start">
@@ -903,9 +932,11 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                                     </div>
                                 </div>
                             ) : (
-                                <div className="w-full flex items-center gap-2 text-zinc-500 pl-2 animate-pulse">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500"></span>
-                                    <span className="text-xs font-medium tracking-wider uppercase">Analyzing Market Data...</span>
+                                <div className="w-full flex flex-col items-start gap-1 pl-2">
+                                    <div className="flex items-center gap-2 text-zinc-500">
+                                        <LoadingDots />
+                                    </div>
+                                    <span className="text-[10px] text-zinc-500 font-medium tracking-wider uppercase ml-1">Analyzing Market Data...</span>
                                 </div>
                             )}
                         </div>

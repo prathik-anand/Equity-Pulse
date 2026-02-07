@@ -11,6 +11,27 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptionComplete }) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunksRef = useRef<Blob[]>([]);
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+    const cleanupAudio = () => {
+        if (silenceTimerRef.current) {
+            clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+        }
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+        }
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
+        analyserRef.current = null;
+    };
 
     const startRecording = async () => {
         try {
@@ -18,6 +39,79 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptionComplete }) => {
             const mediaRecorder = new MediaRecorder(stream);
             mediaRecorderRef.current = mediaRecorder;
             chunksRef.current = [];
+
+            // Set up Web Audio API for silence detection
+            const audioContext = new AudioContext();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 2048; // Increase buffer size for better resolution
+            source.connect(analyser);
+            
+            audioContextRef.current = audioContext;
+            analyserRef.current = analyser;
+
+            const bufferLength = analyser.fftSize;
+            const dataArray = new Uint8Array(bufferLength);
+            const frequencyData = new Uint8Array(analyser.frequencyBinCount);
+            
+            const checkSilence = () => {
+                if (!analyserRef.current) return;
+                
+                analyserRef.current.getByteTimeDomainData(dataArray);
+                analyserRef.current.getByteFrequencyData(frequencyData);
+                
+                // Draw frequency visualization
+                if (canvasRef.current) {
+                    const canvas = canvasRef.current;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                        const width = canvas.width;
+                        const height = canvas.height;
+                        ctx.clearRect(0, 0, width, height);
+                        
+                        // Only use the first 32 frequency bins for a cleaner look
+                        const visualBins = 32;
+                        const barWidth = width / visualBins;
+                        let barHeight;
+                        let x = 0;
+
+                        for (let i = 0; i < visualBins; i++) {
+                            // Scale frequency data for better visibility
+                            barHeight = (frequencyData[i] / 255) * height;
+                            
+                            ctx.fillStyle = `hsla(${200 + (i * 2)}, 70%, 60%, 0.8)`;
+                            ctx.fillRect(x, height - barHeight, barWidth - 1, barHeight);
+
+                            x += barWidth;
+                        }
+                    }
+                }
+
+                // Calculate RMS (Root Mean Square) for silence detection
+                let sum = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    const amplitude = (dataArray[i] - 128) / 128; // Normalize to -1..1
+                    sum += amplitude * amplitude;
+                }
+                const rms = Math.sqrt(sum / bufferLength);
+
+                // Threshold for "silence" - RMS is usually very small for silence
+                // 0.01 is roughly -40dB, 0.02 is roughly -34dB
+                if (rms < 0.02) {
+                    if (!silenceTimerRef.current) {
+                        silenceTimerRef.current = setTimeout(() => {
+                            stopRecording();
+                        }, 1000); // Stop after 1 second of silence
+                    }
+                } else {
+                    if (silenceTimerRef.current) {
+                        clearTimeout(silenceTimerRef.current);
+                        silenceTimerRef.current = null;
+                    }
+                }
+
+                animationFrameRef.current = requestAnimationFrame(checkSilence);
+            };
 
             mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
@@ -31,10 +125,12 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptionComplete }) => {
 
                 // Stop all tracks to release microphone
                 stream.getTracks().forEach(track => track.stop());
+                cleanupAudio();
             };
 
             mediaRecorder.start();
             setIsRecording(true);
+            animationFrameRef.current = requestAnimationFrame(checkSilence);
         } catch (error) {
             console.error('Error accessing microphone:', error);
             alert('Could not access microphone. Please ensure permissions are granted.');
@@ -42,7 +138,7 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptionComplete }) => {
     };
 
     const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
             setIsRecording(false);
             setIsProcessing(true);
@@ -90,7 +186,17 @@ const VoiceInput: React.FC<VoiceInputProps> = ({ onTranscriptionComplete }) => {
     };
 
     return (
-        <div className="flex items-center">
+        <div className="flex items-center gap-3">
+            {isRecording && (
+                <div className="flex items-center bg-zinc-900/50 rounded-full px-3 py-1 border border-zinc-800">
+                    <canvas 
+                        ref={canvasRef} 
+                        width={60} 
+                        height={20} 
+                        className="w-[60px] h-[20px]"
+                    />
+                </div>
+            )}
             {isProcessing ? (
                 <div className="p-2 text-indigo-400 animate-pulse bg-indigo-500/10 rounded-full">
                     <Loader2 className="w-5 h-5 animate-spin" />

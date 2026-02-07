@@ -154,7 +154,14 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
     }
 
     // --- 3. Report Data (Structured Analysis) ---
-    if (toolName === 'read_report') {
+    // Check by tool name OR structure (Duck Typing)
+    const isReportData = (data: any) => {
+        if (!data) return false;
+        if (Array.isArray(data) && data.length > 0 && data[0].section && data[0].content) return true;
+        return false;
+    };
+
+    if (toolName === 'read_report' || isReportData(parsedData)) {
         // Handle explicit error
         if (parsedData.error) {
             return (
@@ -165,11 +172,27 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
             );
         }
 
+        // Robust unpacking: Try to find the array of sections
+        let sections = parsedData;
+        
+        // 1. If it's a string, try to parse it again (double encoding protection)
+        if (typeof sections === 'string') {
+            try { sections = JSON.parse(sections); } catch(e) {}
+        }
+        
+        // 2. If it's an object with a wrapper key, unwrap it
+        if (!Array.isArray(sections) && typeof sections === 'object' && sections !== null) {
+            if (Array.isArray(sections.content)) sections = sections.content;
+            else if (Array.isArray(sections.data)) sections = sections.data;
+            else if (Array.isArray(sections.result)) sections = sections.result;
+            else if (Array.isArray(sections.sections)) sections = sections.sections;
+        }
+
         // Handle Array of Sections (New Format)
-        if (Array.isArray(parsedData)) {
+        if (Array.isArray(sections)) {
             return (
                 <div className="space-y-2.5 mt-1">
-                    {parsedData.map((section: any, idx: number) => (
+                    {sections.map((section: any, idx: number) => (
                         <div key={idx} className="bg-black/20 rounded-lg border border-white/5 overflow-hidden">
                             <div className="bg-white/5 px-2 py-1.5 border-b border-white/5 flex items-center gap-2">
                                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
