@@ -77,11 +77,16 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(({
 
         setImages(prev => {
             const updated = [...prev, ...newImages];
-            onImagesChange(updated.map(img => img.url!).filter(Boolean));
             return updated;
         });
         setIsUploading(false);
-    }, [images.length, maxImages, onImagesChange]);
+    }, [images.length, maxImages]);
+
+    // Sync changes to parent
+    React.useEffect(() => {
+        const urls = images.map(img => img.url).filter((url): url is string => !!url);
+        onImagesChange(urls);
+    }, [images, onImagesChange]);
 
     const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -92,18 +97,13 @@ export const ImageUpload = forwardRef<ImageUploadRef, ImageUploadProps>(({
     };
 
     const removeImage = (index: number) => {
-        setImages(prev => {
-            const updated = prev.filter((_, i) => i !== index);
-            onImagesChange(updated.map(img => img.url!).filter(Boolean));
-            return updated;
-        });
+        setImages(prev => prev.filter((_, i) => i !== index));
     };
 
     const clearAll = useCallback(() => {
         images.forEach(img => URL.revokeObjectURL(img.preview));
         setImages([]);
-        onImagesChange([]);
-    }, [images, onImagesChange]);
+    }, [images]);
 
     useImperativeHandle(ref, () => ({
         addFiles: uploadFiles,

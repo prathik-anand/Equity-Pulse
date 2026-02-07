@@ -65,7 +65,20 @@ async def send_chat_message(
 async def get_chat_history(
     session_id: str, service: ChatService = Depends(get_chat_service)
 ):
-    return await service.get_history(session_id)
+    # return await service.get_history(session_id)
+    # Custom response to include thoughts
+    messages = await service.get_history(session_id)
+    return [
+        {
+            "id": str(msg.id),
+            "role": msg.role,
+            "content": msg.content,
+            "image_urls": msg.image_urls,
+            "thoughts": msg.tool_calls,  # Return saved traces as thoughts
+            "created_at": msg.created_at.isoformat(),
+        }
+        for msg in messages
+    ]
 
 
 @router.get("/history/report/{report_id}")
@@ -80,6 +93,7 @@ async def get_chat_history_by_report(
             "role": msg.role,
             "content": msg.content,
             "image_urls": msg.image_urls,
+            "thoughts": msg.tool_calls,  # Return saved traces as thoughts
             "created_at": msg.created_at.isoformat(),
         }
         for msg in messages

@@ -39,66 +39,170 @@ interface Message {
     image_urls?: string[]; // Attached images
 }
 
-// Helper to format thought content (JSON or text)
+// Helper to safely parse JSON, handling double-encoding
+const safeParseJSON = (input: any): any => {
+    if (typeof input === 'object' && input !== null) return input;
+    try {
+        const parsed = JSON.parse(input);
+        // Recursively unwrap if the result is still a string that looks like JSON
+        if (typeof parsed === 'string' && (parsed.trim().startsWith('{') || parsed.trim().startsWith('['))) {
+            return safeParseJSON(parsed);
+        }
+        return parsed;
+    } catch (e) {
+        return input;
+    }
+};
+
+// Helper to format thought content (Text/Paragraph style)
 const FormatThought: React.FC<{ content: string }> = ({ content }) => {
     try {
-        const parsed = JSON.parse(content);
+        // Use recursive parser to handle double-encoded strings
+        const parsed = safeParseJSON(content);
 
-        if (parsed.plan) {
+        // If after parsing we still have a string, it's unstructured text -> Render Markdown
+        if (typeof parsed === 'string') {
             return (
-                <div className="space-y-2">
-                    <div className="font-medium text-indigo-300">Execution Plan:</div>
-                    <div className="space-y-1.5">
-                        {parsed.plan.map((step: any, i: number) => (
-                            <div key={i} className="flex gap-2 items-start bg-indigo-500/10 p-1.5 rounded border border-indigo-500/20">
-                                <div className="min-w-[4px] h-[4px] rounded-full bg-indigo-400 mt-1.5" />
-                                <div>
-                                    <div className="font-medium text-indigo-200">{step.tool}</div>
-                                    <div className="text-[10px] text-white/60 font-mono mt-0.5">{JSON.stringify(step.args)}</div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none leading-relaxed">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsed}</ReactMarkdown>
                 </div>
             );
         }
 
+        // --- 1. Execution Plan ---
+        if (parsed.plan) {
+            return (
+                <div className="text-zinc-300/90 mb-3">
+                    <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1.5 rounded w-fit border border-zinc-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                        Execution Plan
+                    </div>
+                    <ul className="space-y-2 text-sm pl-1 border-l border-zinc-800 ml-1">
+                        {parsed.plan.map((step: any, i: number) => {
+                            // Map technical tool names to human actions
+                            let action = step.tool.replace(/_/g, ' ');
+                            let details = '';
+
+                            if (step.tool === 'web_search') action = "Searching web for";
+                            else if (step.tool === 'get_company_news') action = "Checking news regarding";
+                            else if (step.tool === 'search_market_trends') action = "Analyzing trends for";
+                            else if (step.tool === 'get_financials') action = "Fetching financials for";
+                            else if (step.tool === 'get_price_history_stats') action = "Pulling price stats for";
+                            else if (step.tool === 'param_extractor') action = "Extracting parameters";
+                            else if (step.tool === 'search_governance_issues') action = "Checking governance for";
+                            else if (step.tool === 'read_report') action = "Reading report section";
+
+                            if (step.args) {
+                                if (step.args.query) details = `"${step.args.query}"`;
+                                else if (step.args.section) details = step.args.section;
+                                else if (step.args.ticker) details = step.args.ticker;
+                            }
+
+                            return (
+                                <li key={i} className="flex gap-3 items-start pl-3 text-zinc-400">
+                                    <span className="font-mono text-[10px] opacity-50 mt-1">{i + 1}.</span>
+                                    <div>
+                                        <span className="font-medium text-zinc-300">{action}</span>
+                                        {details && <span className="text-zinc-500 ml-1.5 font-light">{details}</span>}
+                                    </div>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </div>
+            );
+        }
+
+        // --- 2. Query Rewrite ---
         if (parsed.rewritten_query) {
             return (
-                <div className="space-y-2">
-                    <div className="font-medium text-emerald-300">Decomposition & Rewrite:</div>
-                    <div className="bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
-                        <div className="italic text-white/90">"{parsed.rewritten_query}"</div>
+                <div className="text-zinc-300 mb-3 text-sm">
+                    <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1.5 rounded w-fit border border-zinc-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Context Analysis
+                    </div>
+                    <div className="pl-3 border-l border-zinc-800 ml-1">
+                        <span className="text-zinc-500 text-xs uppercase tracking-wide">Intent</span>
+                        <div className="italic text-zinc-200 mt-1 mb-2">"{parsed.rewritten_query}"</div>
+
                         {parsed.sub_queries && parsed.sub_queries.length > 0 && (
-                            <div className="mt-2 space-y-1 pl-2 border-l-2 border-emerald-500/30">
+                            <div className="mt-2 text-xs grid gap-1">
                                 {parsed.sub_queries.map((q: string, i: number) => (
-                                    <div key={i} className="text-emerald-200/80">• {q}</div>
+                                    <div key={i} className="flex gap-2 text-zinc-500">
+                                        <span>•</span>
+                                        <span>{q}</span>
+                                    </div>
                                 ))}
                             </div>
                         )}
-                        {parsed.image_summary && (
-                            <div className="mt-2 pt-2 border-t border-white/5 text-xs text-white/60">
-                                Image Context: {parsed.image_summary.substring(0, 100)}...
-                            </div>
-                        )}
                     </div>
                 </div>
             );
         }
 
+        // --- 3. Image Analysis ---
         if (parsed.type === "image_analysis") {
             return (
-                <div className="space-y-1">
-                    <div className="font-medium text-purple-300">Image Analysis:</div>
-                    <div className="whitespace-pre-wrap text-white/80">{parsed.content}</div>
+                <div className="text-zinc-300 mb-3 text-sm">
+                    <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1.5 rounded w-fit border border-zinc-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                        Visual Analysis
+                    </div>
+                    <div className="opacity-80 pl-3 border-l border-zinc-800 ml-1 leading-relaxed prose prose-invert prose-xs max-w-none text-zinc-400">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{parsed.content}</ReactMarkdown>
+                    </div>
                 </div>
             );
         }
 
-        return <pre className="whitespace-pre-wrap font-mono text-[10px] text-yellow-200/80 bg-yellow-500/5 p-2 rounded">{JSON.stringify(parsed, null, 2)}</pre>;
+        // --- 4. Tool Execution Results (Generic Wrapper) ---
+        if (parsed.execution_results) {
+            return (
+                <div className="text-zinc-300 mb-3 text-sm">
+                    <div className="flex items-center gap-2 mb-2 text-[10px] font-semibold text-zinc-500 uppercase tracking-widest bg-zinc-900/50 p-1.5 rounded w-fit border border-zinc-800">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        Observation
+                    </div>
+                    <div className="space-y-4 pl-3 border-l border-zinc-800 ml-1">
+                        {Object.entries(parsed.execution_results).map(([key, result]: [string, any]) => {
+                            // --- Aggressive JSON Unwrapping ---
+                            let data = safeParseJSON(result);
+
+                            // If data is now an object with a single key that looks like a step name, unwrap it again
+                            if (data && typeof data === 'object' && !Array.isArray(data)) {
+                                const keys = Object.keys(data);
+                                if (keys.length === 1 && keys[0].includes('step_')) {
+                                    data = safeParseJSON(data[keys[0]]);
+                                }
+                            }
+
+                            return (
+                                <div key={key}>
+                                    {/* Tool-Specific Renderers */}
+                                    {typeof ToolOutputRenderer !== 'undefined' ?
+                                        <ToolOutputRenderer data={data} toolName={key} /> :
+                                        <pre className="text-xs text-zinc-500 whitespace-pre-wrap">{JSON.stringify(data, null, 2)}</pre>
+                                    }
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        // Fallback for direct tool outputs (not wrapped in execution_results)
+        return typeof ToolOutputRenderer !== 'undefined' ?
+            <ToolOutputRenderer data={parsed} /> :
+            <div className="text-sm text-zinc-300">{JSON.stringify(parsed)}</div>;
 
     } catch (e) {
-        return <div className="whitespace-pre-wrap text-gray-300">{content}</div>;
+        // Render unstructured text with Markdown support
+        return (
+            <div className="text-sm text-zinc-300 prose prose-invert prose-sm max-w-none leading-relaxed">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
+            </div>
+        );
     }
 };
 
@@ -140,28 +244,10 @@ const ThinkingAccordion: React.FC<{ steps: ThoughtStep[] }> = ({ steps }) => {
                         exit={{ height: 0 }}
                         className="overflow-hidden"
                     >
-                        <div className="px-3 py-2 space-y-3 bg-black/10 text-xs text-gray-300 font-sans border-t border-white/5 max-h-[300px] overflow-y-auto">
+                        <div className="px-4 py-3 space-y-4 bg-black/10 text-sm text-gray-300 font-sans border-t border-white/5 max-h-[400px] overflow-y-auto">
                             {steps.map((step, idx) => (
-                                <div key={idx} className="flex gap-2">
-                                    <div className="mt-0.5 min-w-[12px]">
-                                        {step.type === 'tool' ? (
-                                            <Search className="w-3 h-3 text-blue-400" />
-                                        ) : (
-                                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500/50 mt-1" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1 overflow-hidden">
-                                        <div className="font-medium text-white/70 mb-0.5">
-                                            {step.toolName || "Thought Process"}
-                                        </div>
-                                        <div className="prose prose-invert prose-xs max-w-none prose-p:leading-relaxed prose-pre:bg-black/30 prose-pre:p-2 prose-pre:rounded-md whitespace-pre-wrap break-words">
-                                            {step.type === 'tool' ? (
-                                                formatToolInput(step.toolName || 'tool', step.content)
-                                            ) : (
-                                                <FormatThought content={step.content} />
-                                            )}
-                                        </div>
-                                    </div>
+                                <div key={idx} className="relative pl-3 border-l-2 border-white/10 ml-1">
+                                    <FormatThought content={step.content} />
                                 </div>
                             ))}
                         </div>
@@ -263,7 +349,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                     role: msg.role,
                     content: msg.content,
                     timestamp: new Date(msg.created_at),
-                    image_urls: msg.image_urls
+                    image_urls: msg.image_urls,
+                    thoughts: msg.thoughts || [] // Map retrieved thoughts
                 })));
                 setCurrentSessionId(sid);
                 setHistoryOpen(false);
@@ -490,15 +577,46 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
                             else if (data.type === 'tool_end') {
                                 setMessages(prev => prev.map(m => {
                                     if (m.id !== assistantMsgId) return m;
-                                    // Find and complete the tool step
                                     const thoughts = m.thoughts || [];
                                     const lastThought = thoughts[thoughts.length - 1];
                                     if (lastThought && lastThought.type === 'tool' && lastThought.status === 'running') {
                                         lastThought.status = 'completed';
                                         lastThought.toolOutput = data.output;
-                                        return { ...m, thoughts: [...thoughts] }; // mutate copy
+                                        return { ...m, thoughts: [...thoughts] };
                                     }
                                     return m;
+                                }));
+                            }
+                            // Trace Events (Query Rewrite, Plan, Analysis, Execution)
+                            else if (['query_rewrite', 'image_analysis', 'plan', 'execution'].includes(data.type)) {
+                                setMessages(prev => prev.map(m => {
+                                    if (m.id !== assistantMsgId) return m;
+
+                                    // Construct content object based on type to match FormatThought expectations
+                                    let contentObj = {};
+                                    if (data.type === 'query_rewrite') {
+                                        contentObj = {
+                                            rewritten_query: data.rewritten_query,
+                                            sub_queries: data.sub_queries,
+                                            needs_web_search: data.needs_web_search
+                                        };
+                                    } else if (data.type === 'image_analysis') {
+                                        contentObj = { type: 'image_analysis', content: data.content };
+                                    } else if (data.type === 'plan') {
+                                        contentObj = { plan: data.content };
+                                    } else if (data.type === 'execution') {
+                                        contentObj = { execution_results: data.content };
+                                    }
+
+                                    return {
+                                        ...m,
+                                        thoughts: [...(m.thoughts || []), {
+                                            type: 'thought', // Use 'thought' type for rendering
+                                            content: JSON.stringify(contentObj),
+                                            status: 'completed',
+                                            timestamp: new Date()
+                                        }]
+                                    };
                                 }));
                             }
 

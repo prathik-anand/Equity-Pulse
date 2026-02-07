@@ -5,6 +5,7 @@ from uuid import UUID
 import json
 import logging
 from typing import AsyncGenerator
+from datetime import datetime
 
 # Get logger
 logger = logging.getLogger("agent")
@@ -36,11 +37,12 @@ class ChatService:
         role: str,
         content: str,
         image_urls: list[str] = None,
+        tool_calls: list[dict] = None,
     ):
         try:
             report_uuid = UUID(report_id)
             await self.repo.create_message(
-                session_id, report_uuid, role, content, image_urls
+                session_id, report_uuid, role, content, image_urls, tool_calls
             )
         except Exception as e:
             logger.error(f"Error saving message: {e}", exc_info=True)
@@ -109,6 +111,9 @@ class ChatService:
             },
         }
 
+        # Track reasoning traces
+        thoughts = []
+
         logger.info(
             f"Starting Chat Graph for session {session_id} with {len(history_messages)} messages"
         )
@@ -129,6 +134,8 @@ class ChatService:
                     elif node_name in ["planner", "query_rewriter", "image_analyzer"]:
                         content = event["data"]["chunk"].content
                         if content:
+                            # We don't save raw tokens of thoughts to DB structure yet,
+                            # we rely on the structured events below.
                             yield json.dumps(
                                 {
                                     "type": "thought",
@@ -140,6 +147,16 @@ class ChatService:
                 elif kind == "on_tool_start":
                     name = event["name"]
                     inputs = event["data"].get("input")
+                    # Capture tool start
+                    thoughts.append(
+                        {
+                            "type": "tool",
+                            "toolName": name,
+                            "toolInput": inputs,
+                            "status": "running",
+                            "timestamp": datetime.now().isoformat(),
+                        }
+                    )
                     yield json.dumps(
                         {"type": "tool_start", "tool": name, "input": inputs}
                     )
@@ -147,6 +164,18 @@ class ChatService:
                 elif kind == "on_tool_end":
                     name = event["name"]
                     output = event["data"].get("output")
+                    # Capture tool end (update last running tool)
+                    # Simple heuristic: update the last tool entry
+                    for t in reversed(thoughts):
+                        if (
+                            t.get("type") == "tool"
+                            and t.get("toolName") == name
+                            and t.get("status") == "running"
+                        ):
+                            t["status"] = "completed"
+                            t["toolOutput"] = str(output)
+                            break
+
                     yield json.dumps(
                         {"type": "tool_end", "tool": name, "output": str(output)}
                     )
@@ -155,10 +184,19 @@ class ChatService:
                 elif kind == "on_chain_end" and event["name"] == "image_analyzer":
                     output = event["data"].get("output")
                     if output and "image_summary" in output:
+                        content = output["image_summary"]
+                        thoughts.append(
+                            {
+                                "type": "image_analysis",
+                                "content": content,
+                                "status": "completed",
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                        )
                         yield json.dumps(
                             {
                                 "type": "image_analysis",
-                                "content": output["image_summary"],
+                                "content": content,
                             }
                         )
 
@@ -166,29 +204,55 @@ class ChatService:
                 elif kind == "on_chain_end" and event["name"] == "query_rewriter":
                     output = event["data"].get("output")
                     if output and "rewritten_query" in output:
-                        yield json.dumps(
+                        content_obj = {
+                            "rewritten_query": output.get("rewritten_query"),
+                            "sub_queries": output.get("sub_queries", []),
+                            "needs_web_search": output.get("needs_web_search", False),
+                        }
+                        thoughts.append(
                             {
                                 "type": "query_rewrite",
-                                "rewritten_query": output.get("rewritten_query"),
-                                "sub_queries": output.get("sub_queries", []),
-                                "needs_web_search": output.get(
-                                    "needs_web_search", False
-                                ),
+                                "content": json.dumps(content_obj),
+                                "status": "completed",
+                                "timestamp": datetime.now().isoformat(),
                             }
                         )
+                        yield json.dumps({"type": "query_rewrite", **content_obj})
 
                 elif kind == "on_chain_end" and event["name"] == "planner":
                     output = event["data"].get("output")
                     if output and "plan" in output:
-                        yield json.dumps({"type": "plan", "content": output["plan"]})
+                        plan_content = output["plan"]
+                        thoughts.append(
+                            {
+                                "type": "plan",
+                                "content": json.dumps(
+                                    {"plan": plan_content}
+                                ),  # consistent with frontend
+                                "status": "completed",
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                        )
+                        yield json.dumps({"type": "plan", "content": plan_content})
 
                 elif kind == "on_chain_end" and event["name"] == "executor":
                     output = event["data"].get("output")
                     if output and "execution_results" in output:
+                        exec_results = output["execution_results"]
+                        thoughts.append(
+                            {
+                                "type": "execution",
+                                "content": json.dumps(
+                                    {"execution_results": exec_results}
+                                ),
+                                "status": "completed",
+                                "timestamp": datetime.now().isoformat(),
+                            }
+                        )
                         yield json.dumps(
                             {
                                 "type": "execution",
-                                "content": output["execution_results"],
+                                "content": exec_results,
                             }
                         )
 
@@ -208,6 +272,7 @@ class ChatService:
                         report_id=report_id,
                         role="assistant",
                         content=final_answer,
+                        tool_calls=thoughts,  # Save collected traces
                     )
                 except Exception as e:
                     logger.error(f"Failed to save assistant message: {e}")

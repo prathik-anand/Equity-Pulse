@@ -17,6 +17,7 @@ class ChatRepository:
         role: str,
         content: str,
         image_urls: Optional[List[str]] = None,
+        tool_calls: Optional[List[dict]] = None,  # Store reasoning traces
     ) -> ChatHistory:
         message = ChatHistory(
             session_id=session_id,
@@ -24,6 +25,7 @@ class ChatRepository:
             role=role,
             content=content,
             image_urls=image_urls,
+            tool_calls=tool_calls,
         )
         self.db.add(message)
         await self.db.commit()

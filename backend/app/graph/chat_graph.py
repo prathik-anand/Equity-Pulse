@@ -286,7 +286,8 @@ async def executor_node(state: ChatState):
             try:
                 from app.graph.tools import search_market_trends
 
-                result = search_market_trends(query)
+                # search_market_trends is a StructuredTool, need to use .invoke
+                result = search_market_trends.invoke({"query": query})
                 execution_result = f"Web Search Results for '{query}':\n{result}"
             except Exception as e:
                 execution_result = f"Web search error: {e}"
@@ -296,7 +297,8 @@ async def executor_node(state: ChatState):
             try:
                 from app.graph.tools import get_company_news
 
-                result = get_company_news(ticker)
+                # get_company_news is a StructuredTool, need to use .invoke
+                result = get_company_news.invoke({"ticker": ticker})
                 execution_result = f"News for {ticker}:\n{result}"
             except Exception as e:
                 execution_result = f"News fetch error: {e}"
