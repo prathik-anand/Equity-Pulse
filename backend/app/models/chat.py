@@ -4,13 +4,22 @@ import uuid
 from datetime import datetime
 from app.models.base import Base
 
+
 class ChatHistory(Base):
     __tablename__ = "chat_history"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    session_id = Column(String, index=True, nullable=False) # Client session ID (groups a conversation)
-    report_id = Column(UUID(as_uuid=True), ForeignKey("analysis_sessions.id"), index=True, nullable=False)
-    role = Column(String, nullable=False) # 'user' or 'assistant'
+    session_id = Column(
+        String, index=True, nullable=False
+    )  # Client session ID (groups a conversation)
+    report_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("analysis_sessions.id"),
+        index=True,
+        nullable=False,
+    )
+    role = Column(String, nullable=False)  # 'user' or 'assistant'
     content = Column(Text, nullable=False)
-    tool_calls = Column(JSON, nullable=True) # Store tool calls if any
+    image_urls = Column(JSON, nullable=True)  # Array of image URLs
+    tool_calls = Column(JSON, nullable=True)  # Store tool calls if any
     created_at = Column(DateTime, default=datetime.utcnow)

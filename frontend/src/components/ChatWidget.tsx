@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, MessageSquare, X, Minimize2, Maximize2, Loader2, Sparkles, Brain, ChevronDown, ChevronRight, Search } from 'lucide-react';
+import { Send, MessageSquare, X, Minimize2, Maximize2, Loader2, Sparkles, Brain, ChevronDown, ChevronRight, Search, Plus, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import clsx from 'clsx';
 import { API_BASE_URL } from '../api';
 import VoiceInput from './VoiceInput';
+import ImageUpload, { type ImageUploadRef } from './ImageUpload';
 
 interface ChatWidgetProps {
     sessionId: string;
@@ -35,13 +36,75 @@ interface Message {
     isStreaming?: boolean;
     steps?: string[]; // Legacy planner steps
     thoughts?: ThoughtStep[]; // New Reasoning Traces
+    image_urls?: string[]; // Attached images
 }
+
+// Helper to format thought content (JSON or text)
+const FormatThought: React.FC<{ content: string }> = ({ content }) => {
+    try {
+        const parsed = JSON.parse(content);
+
+        if (parsed.plan) {
+            return (
+                <div className="space-y-2">
+                    <div className="font-medium text-indigo-300">Execution Plan:</div>
+                    <div className="space-y-1.5">
+                        {parsed.plan.map((step: any, i: number) => (
+                            <div key={i} className="flex gap-2 items-start bg-indigo-500/10 p-1.5 rounded border border-indigo-500/20">
+                                <div className="min-w-[4px] h-[4px] rounded-full bg-indigo-400 mt-1.5" />
+                                <div>
+                                    <div className="font-medium text-indigo-200">{step.tool}</div>
+                                    <div className="text-[10px] text-white/60 font-mono mt-0.5">{JSON.stringify(step.args)}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        if (parsed.rewritten_query) {
+            return (
+                <div className="space-y-2">
+                    <div className="font-medium text-emerald-300">Decomposition & Rewrite:</div>
+                    <div className="bg-emerald-500/10 p-2 rounded border border-emerald-500/20">
+                        <div className="italic text-white/90">"{parsed.rewritten_query}"</div>
+                        {parsed.sub_queries && parsed.sub_queries.length > 0 && (
+                            <div className="mt-2 space-y-1 pl-2 border-l-2 border-emerald-500/30">
+                                {parsed.sub_queries.map((q: string, i: number) => (
+                                    <div key={i} className="text-emerald-200/80">• {q}</div>
+                                ))}
+                            </div>
+                        )}
+                        {parsed.image_summary && (
+                            <div className="mt-2 pt-2 border-t border-white/5 text-xs text-white/60">
+                                Image Context: {parsed.image_summary.substring(0, 100)}...
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        if (parsed.type === "image_analysis") {
+            return (
+                <div className="space-y-1">
+                    <div className="font-medium text-purple-300">Image Analysis:</div>
+                    <div className="whitespace-pre-wrap text-white/80">{parsed.content}</div>
+                </div>
+            );
+        }
+
+        return <pre className="whitespace-pre-wrap font-mono text-[10px] text-yellow-200/80 bg-yellow-500/5 p-2 rounded">{JSON.stringify(parsed, null, 2)}</pre>;
+
+    } catch (e) {
+        return <div className="whitespace-pre-wrap text-gray-300">{content}</div>;
+    }
+};
 
 // --- Accordion Component ---
 const ThinkingAccordion: React.FC<{ steps: ThoughtStep[] }> = ({ steps }) => {
     const [isOpen, setIsOpen] = useState(true);
-    // If we have active steps, it's nice to auto-expand, but allow user toggle.
-    // Default open is good for transparency.
 
     if (steps.length === 0) return null;
 
@@ -92,13 +155,10 @@ const ThinkingAccordion: React.FC<{ steps: ThoughtStep[] }> = ({ steps }) => {
                                             {step.toolName || "Thought Process"}
                                         </div>
                                         <div className="prose prose-invert prose-xs max-w-none prose-p:leading-relaxed prose-pre:bg-black/30 prose-pre:p-2 prose-pre:rounded-md whitespace-pre-wrap break-words">
-                                            {/* Here is the fix: Use formatToolInput for thoughts too if they look like JSON */}
                                             {step.type === 'tool' ? (
-                                                step.content // Already formatted in the handler
+                                                formatToolInput(step.toolName || 'tool', step.content)
                                             ) : (
-                                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                                    {formatToolInput('thought', step.content)}
-                                                </ReactMarkdown>
+                                                <FormatThought content={step.content} />
                                             )}
                                         </div>
                                     </div>
@@ -157,15 +217,114 @@ const formatToolInput = (tool: string, input: any): string => {
     }
 };
 
-export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, activeTab, initialContext, onCloseSelection }) => {
+// Generate unique session ID
+const generateSessionId = () => `chat_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+
+export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessionId, reportId, activeTab, initialContext, onCloseSelection }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [isExpanded, setIsExpanded] = useState(false);
+    const [isExpanded, setIsExpanded] = useState(true);
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputValue, setInputValue] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [plannerSteps, setPlannerSteps] = useState<string[]>([]);
+    const [pendingImages, setPendingImages] = useState<string[]>([]);
+    const [currentSessionId, setCurrentSessionId] = useState(initialSessionId);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [sessions, setSessions] = useState<any[]>([]);
+    const [previewImage, setPreviewImage] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
+    const imageUploadRef = useRef<ImageUploadRef>(null);
+
+    // Load sessions list
+    const loadSessions = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/chat/sessions/${reportId}`);
+            if (response.ok) {
+                const data = await response.json();
+                setSessions(data);
+                return data;
+            }
+        } catch (error) {
+            console.error('Failed to load sessions:', error);
+        }
+        return [];
+    };
+
+    // Load messages for a specific session
+    const loadSessionMessages = async (sid: string) => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/chat/history/${sid}`);
+            if (response.ok) {
+                const history = await response.json();
+                setMessages(history.map((msg: any) => ({
+                    id: msg.id,
+                    role: msg.role,
+                    content: msg.content,
+                    timestamp: new Date(msg.created_at),
+                    image_urls: msg.image_urls
+                })));
+                setCurrentSessionId(sid);
+                setHistoryOpen(false);
+            }
+        } catch (error) {
+            console.error('Failed to load chat history:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Handle new chat creation
+    const handleNewChat = () => {
+        const newSessionId = generateSessionId();
+        setCurrentSessionId(newSessionId);
+        setMessages([]);
+        setPlannerSteps([]);
+        setInputValue('');
+        imageUploadRef.current?.clearAll();
+        setHistoryOpen(false);
+        loadSessions();
+    };
+
+    // Initial Load
+    useEffect(() => {
+        const initChat = async () => {
+            const sessionsList = await loadSessions();
+            if (sessionsList && sessionsList.length > 0) {
+                // Load the most recent session
+                loadSessionMessages(sessionsList[0].session_id);
+            } else {
+                // No sessions, start fresh
+                handleNewChat();
+            }
+        };
+        if (reportId) initChat();
+    }, [reportId]);
+
+    // Handle paste event for clipboard images
+    useEffect(() => {
+        const handlePaste = async (e: ClipboardEvent) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+
+            const imageFiles: File[] = [];
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith('image/')) {
+                    const file = items[i].getAsFile();
+                    if (file) imageFiles.push(file);
+                }
+            }
+
+            if (imageFiles.length > 0 && imageUploadRef.current) {
+                e.preventDefault();
+                await imageUploadRef.current.addFiles(imageFiles);
+            }
+        };
+
+        document.addEventListener('paste', handlePaste);
+        return () => document.removeEventListener('paste', handlePaste);
+    }, []);
 
     // Open widget when context is provided (text selected)
     useEffect(() => {
@@ -205,11 +364,14 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
             id: Date.now().toString(),
             role: 'user',
             content: inputValue,
-            timestamp: new Date()
+            timestamp: new Date(),
+            image_urls: pendingImages.length > 0 ? pendingImages : undefined
         };
 
         setMessages(prev => [...prev, userMsg]);
         setInputValue('');
+        setPendingImages([]);
+        imageUploadRef.current?.clearAll();
         setIsLoading(true);
         setPlannerSteps([]);
 
@@ -229,11 +391,12 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    session_id: sessionId,
+                    session_id: currentSessionId,
                     report_id: reportId,
                     message: userMsg.content,
                     active_tab: activeTab,
-                    selected_text: initialContext?.selectedText
+                    selected_text: initialContext?.selectedText,
+                    image_urls: userMsg.image_urls
                 })
             });
 
@@ -383,7 +546,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
             id="chat-widget-container"
             className={clsx(
                 "fixed bottom-6 right-6 z-50 pointer-events-auto flex flex-col bg-[#0F1117] border border-white/10 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-xl",
-                isExpanded ? "w-[80vw] h-[80vh] max-w-6xl" : "w-[400px] h-[600px]"
+                isExpanded ? "w-[80vw] h-[80vh] max-w-6xl" : "w-[450px] h-[700px]"
             )}
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
@@ -404,6 +567,25 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
+                    {/* History Toggle */}
+                    <button
+                        onClick={() => {
+                            setHistoryOpen(!historyOpen);
+                            if (!historyOpen) loadSessions();
+                        }}
+                        className={`p-1.5 rounded-md transition-colors ${historyOpen ? 'text-white bg-white/10' : 'text-white/40 hover:text-white/80 hover:bg-white/10'}`}
+                        title="Chat History"
+                    >
+                        <Clock className="w-4 h-4" />
+                    </button>
+                    {/* New Chat Button */}
+                    <button
+                        onClick={handleNewChat}
+                        className="p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-md transition-colors"
+                        title="New Chat"
+                    >
+                        <Plus className="w-4 h-4" />
+                    </button>
                     <button
                         onClick={() => setIsExpanded(!isExpanded)}
                         className="p-1.5 text-white/40 hover:text-white/80 hover:bg-white/10 rounded-md transition-colors"
@@ -418,6 +600,50 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                     </button>
                 </div>
             </div>
+
+            {/* History Sidebar */}
+            <AnimatePresence>
+                {historyOpen && (
+                    <motion.div
+                        initial={{ x: '100%', opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: '100%', opacity: 0 }}
+                        className="absolute top-[50px] bottom-0 right-0 w-64 bg-[#0F1117] border-l border-white/10 z-20 shadow-[-10px_0_20px_rgba(0,0,0,0.5)] flex flex-col"
+                    >
+                        <div className="p-3 border-b border-white/5 flex justify-between items-center text-xs font-medium text-white/50">
+                            HISTORY
+                            <button onClick={handleNewChat} className="flex items-center gap-1 text-indigo-400 hover:text-indigo-300">
+                                <Plus className="w-3 h-3" /> New
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                            {sessions.length === 0 && (
+                                <div className="text-center text-white/30 text-xs py-4">No history yet</div>
+                            )}
+                            {sessions.map((session) => (
+                                <button
+                                    key={session.session_id}
+                                    onClick={() => loadSessionMessages(session.session_id)}
+                                    className={clsx(
+                                        "w-full text-left p-2.5 rounded-lg text-xs transition-colors group",
+                                        currentSessionId === session.session_id
+                                            ? "bg-indigo-500/20 border border-indigo-500/30 text-white"
+                                            : "text-white/60 hover:bg-white/5 border border-transparent"
+                                    )}
+                                >
+                                    <div className="font-medium truncate mb-0.5">{session.title}</div>
+                                    <div className="flex justify-between items-center">
+                                        <div className="text-[10px] opacity-50">
+                                            {new Date(session.created_at).toLocaleDateString()}
+                                        </div>
+                                        {/* Delete button could go here */}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Context Indicator */}
             {initialContext && (
@@ -476,6 +702,20 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                             <div className="flex flex-col items-end mb-3 space-y-2">
                                 {turn.user.map(msg => (
                                     <div key={msg.id} className="max-w-[70%] bg-indigo-600/20 border border-indigo-500/30 text-indigo-100 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed shadow-sm backdrop-blur-sm">
+                                        {/* Display attached images */}
+                                        {msg.image_urls && msg.image_urls.length > 0 && (
+                                            <div className="flex flex-wrap gap-2 mb-2">
+                                                {msg.image_urls.map((url, imgIdx) => (
+                                                    <img
+                                                        key={imgIdx}
+                                                        src={url}
+                                                        alt={`Attachment ${imgIdx + 1}`}
+                                                        className="w-20 h-20 object-cover rounded-lg border border-white/20 cursor-pointer hover:opacity-80 transition-opacity"
+                                                        onClick={() => setPreviewImage(url)}
+                                                    />
+                                                ))}
+                                            </div>
+                                        )}
                                         {msg.content}
                                         <div className="text-[10px] text-indigo-300/50 mt-1 text-right">
                                             {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -539,6 +779,10 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
 
             {/* Input Area */}
             <div className="p-4 bg-[#0F1117] border-t border-white/5">
+                {/* Image Preview Area - appears above input when images attached */}
+                <ImageUpload ref={imageUploadRef} onImagesChange={setPendingImages} />
+
+                {/* Input Row */}
                 <div className="relative flex items-end gap-2 bg-white/5 rounded-xl border border-white/10 p-2 focus-within:border-indigo-500/50 transition-colors">
                     <VoiceInput onTranscriptionComplete={handleTranscription} />
                     <textarea
@@ -552,9 +796,9 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                             }
                         }}
                         placeholder="Ask clarify questions about the report..."
-                        className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-white/30 text-sm resize-none max-h-[30vh] min-h-[20px] py-2 overflow-y-auto" // Increased max-height
+                        className="w-full bg-transparent border-none focus:ring-0 text-white placeholder-white/30 text-sm resize-none max-h-[30vh] min-h-[20px] py-2 overflow-y-auto"
                         rows={1}
-                        style={{ height: 'auto', minHeight: '40px' }} // Dynamic height
+                        style={{ height: 'auto', minHeight: '40px' }}
                     />
                     <button
                         onClick={handleSend}
@@ -576,6 +820,35 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId, reportId, act
                     </span>
                 </div>
             </div>
+
+            {/* Lightbox Modal for Chat History Images */}
+            <AnimatePresence>
+                {previewImage && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+                        onClick={() => setPreviewImage(null)}
+                    >
+                        <button
+                            className="absolute top-4 right-4 text-white/50 hover:text-white p-2 bg-white/10 rounded-full transition-colors"
+                            onClick={() => setPreviewImage(null)}
+                        >
+                            <X className="w-6 h-6" />
+                        </button>
+                        <motion.img
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            src={previewImage}
+                            alt="Full View"
+                            className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 };
