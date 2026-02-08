@@ -1,93 +1,79 @@
-# EquityPulse
+# EquityPulse: The AI Investment Committee 🧠 📈
 
-**AI-Powered Investment Intelligence Platform**
+**"The Hedge Fund in Your Pocket"**
 
-EquityPulse is a sophisticated multi-agent system designed to analyze stock market data. It orchestrates a team of specialized AI agents to perform Technical, Fundamental, Sector, and Management analysis, aggregating their insights into a comprehensive investment report with a clear Buy/Hold/Sell signal.
+> **Winner of the [Hackathon Name] Hackathon (Target)**
+>
+> *91% of retail traders lose money in derivatives (SEBI, 2024). EquityPulse exists to fix that.*
 
-![Dashboard Preview](https://github.com/user-attachments/assets/placeholder-image.png)
+![EquityPulse Dashboard](https://github.com/user-attachments/assets/placeholder-image.png)
 
-## 🚀 Features
+## 💡 The Problem: Information Asymmetry
+Wall Street has teams of 50+ analysts working 100-hour weeks. They read every footnote, track every supply chain, and model every risk.
+**You have a day job and a Reddit tip.**
 
-*   **Multi-Agent Architecture**: Uses **LangGraph** to coordinate specialized agents.
-    *   **Technical Analyst**: Analyzes price action and momentum (RSI, MACD).
-    *   **Fundamental Analyst**: Evaluates financial health (Balance Sheets, Income Statements).
-    *   **Sector Analyst**: Assesses industry trends and peer performance.
-    *   **Management Analyst**: Investigates governance, news, and leadership stability.
-*   **Real-Time Transparency**: Watch agent "thoughts" and logs stream in real-time on the dashboard.
-*   **Live Ticker Discovery**: Dynamically fetches the S&P 500 list for instant autocomplete search.
-*   **Premium UI**: Built with **React** and **Tailwind CSS**, featuring glassmorphism and smooth animations.
-*   **Robust Backend**: Powered by **FastAPI**, **PostgreSQL** (Async), and **Alembic**.
+Most "AI for Finance" tools are just simple RAG wrappers. They search for 3-4 snippets of text and summarize them. They lack **depth, context, and reasoning**.
+
+## 🚀 The Solution: Autonomous Multi-Agent Reasoning
+EquityPulse is not a chatbot. It is an **Autonomous Investment Committee**. It orchestrates a team of 5 specialized AI agents, each mimicking a specific role in a hedge fund, to debate and analyze a stock from every angle.
+
+### The "Zero-Loss" Advantage (Powered by Gemini 1.5 Pro)
+We **DO NOT** use traditional RAG (Retrieval Augmented Generation) which chops documents into tiny, meaningless chunks.
+Instead, we leverage **Gemini's 2 Million Token Context Window** to feed the **ENTIRE Annual Report (10-K)**, recent news, and financial statements directly into the model's brain.
+*Result: Zero context loss. Deep, cross-referenced reasoning.*
+
+## 🕵️ The Agents (The "Swarm")
+
+1.  **Fundamental Analyst (The "Buffett")** 🏰
+    *   *Focus*: Moats, Intrinsic Value, ROIC, Free Cash Flow Yield.
+    *   *Goal*: Find "Wonderful Companies at Fair Prices".
+2.  **Quant Analyst (The "Jim Simons")** 🔢
+    *   *Focus*: Insider Cluster Buying, Institutional Ownership, Beneish M-Score (Fraud Detection), Altman Z-Score (Bankruptcy Risk).
+    *   *Goal*: Trust the math, not the narrative.
+3.  **Risk Manager (The "Bear")** 🐻
+    *   *Focus*: Downside protection, Geopolitical exposure, Supply chain fragility, Litigation risk.
+    *   *Goal*: "Kill the trade".
+4.  **Sector Strategist (The "Macro")** 🌍
+    *   *Focus*: Interest rate sensitivity, Sector rotation, Business cycle stage.
+    *   *Goal*: Don't fight the tide.
+5.  **Technical Analyst (The "Trader")** 📊
+    *   *Focus*: RSI Divergences, Volume Profile, Stage Analysis.
+    *   *Goal*: Time the entry.
+
+## ⚔️ The "Conflict" Engine
+Most AIs agree with themselves. **Ours argue.**
+The *Portfolio Manager* node takes the conflicting reports (e.g., "Quant says SELL, Fundamental says BUY") and synthesizes a nuanced final verdict, just like a real investment committee meeting.
 
 ## 🛠️ Tech Stack
-
-*   **Backend**: Python 3.11+, FastAPI, LangGraph, SQLAlchemy (Async), Alembic, Pydantic.
-*   **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v3.4, Framer Motion.
-*   **Database**: PostgreSQL (Supabase compatible).
-*   **Data Sources**: Yahoo Finance (`yfinance`), Wikipedia (S&P 500).
+-   **AI Core**: Google Gemini 1.5 Pro / Flash Thinking (Long Context Reasoning).
+-   **Orchestration**: LangGraph (Stateful Multi-Agent Workflow).
+-   **Backend**: Python, FastAPI, Async SQLModel.
+-   **Frontend**: React 19, Tailwind CSS (Premium "Dark Data" UI).
+-   **Data**: yFinance, DuckDuckGo Search (Real-time).
 
 ## ⚡ Getting Started
 
 ### Prerequisites
 *   Python 3.11+
 *   Node.js 18+
-*   PostgreSQL Database
+*   Google Gemini API Key
 
-### 1. Clone the Repository
-```bash
-git clone https://github.com/prathik-anand/EquityPulse.git
-cd EquityPulse
-```
-
-### 2. Backend Setup
+### Backend Setup
 ```bash
 cd backend
-
-# Create Virtual Environment
 python3 -m venv .venv
 source .venv/bin/activate
-
-# Install Dependencies (using uv or pip)
-pip install uv
-uv sync
-
-# Configure Environment
-cp .env.example .env
-
-# Edit .env and set your secrets
-# - GOOGLE_API_KEY
-
-# Run Database Migrations
-alembic upgrade head
-
-# Start Server
+pip install uv && uv sync
+cp .env.example .env  # Add your GOOGLE_API_KEY
 uvicorn app.main:app --reload
 ```
-*Backend runs on `http://localhost:8000`*
 
-### 3. Frontend Setup
+### Frontend Setup
 ```bash
 cd frontend
-
-# Install Dependencies
 npm install
-
-# Start Dev Server
 npm run dev
 ```
-*Frontend runs on `http://localhost:5173`*
 
-## 📖 Usage
-
-1.  Open the frontend application.
-2.  Type a ticker symbol (e.g., `NVDA`, `AAPL`) in the search bar.
-3.  Click **Analyze**.
-4.  Watch the "Live Logs" to see agents working in real-time.
-5.  Review the final Executive Summary and detailed breakdown tabs.
-
-## 🤝 Contributing
-
-Contributions are welcome! Please fork the repository and submit a Pull Request.
-
-## 📄 License
-
+## 📜 License
 MIT License.
