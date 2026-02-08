@@ -42,6 +42,32 @@ class MarketTrendsSearchInput(BaseModel):
 class ParallelSearchInput(BaseModel):
     """Input schema for parallel_search_market_trends tool."""
 
-    queries: List[str] = Field(
-        description="List of distinct search queries to run in parallel. E.g. ['Competitor A news', 'Industry Trend B', 'Regulatory Update C']"
+
+class InsiderTradesInput(BaseModel):
+    """Input schema for get_insider_trades tool."""
+
+    ticker: str = Field(
+        description="Stock ticker symbol to retrieve insider transactions for"
+    )
+
+
+class OwnershipDataInput(BaseModel):
+    """Input schema for get_ownership_data tool."""
+
+    ticker: str = Field(
+        description="Stock ticker symbol to retrieve ownership and short interest data for"
+    )
+
+
+class RiskMetricsInput(BaseModel):
+    """Input for get_risk_metrics tool."""
+
+    ticker: str = Field(description="The ticker symbol to analyze (e.g., AAPL, NVDA)")
+
+
+class AdvancedRatiosInput(BaseModel):
+    """Input schema for get_advanced_ratios tool."""
+
+    ticker: str = Field(
+        description="Stock ticker symbol to retrieve advanced financial ratios for"
     )

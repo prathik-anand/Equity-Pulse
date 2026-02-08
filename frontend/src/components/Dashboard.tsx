@@ -670,6 +670,76 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                             </div>
                         </div>
 
+                        {/* Advanced Efficiency & Risk Metrics (NEW) */}
+                        <div className="mt-4">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Advanced Efficiency & Risk Keys</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                                {/* ROCE */}
+                                <div className="p-3 bg-slate-900/30 border border-indigo-500/20 rounded-lg">
+                                    <div className="text-[10px] text-indigo-300 uppercase tracking-wider">ROCE (Return on Cap)</div>
+                                    <div className={clsx("text-lg font-mono font-bold mt-1",
+                                        (details.fundamental.details.return_on_capital_employed > 20) ? "text-emerald-400" :
+                                            (details.fundamental.details.return_on_capital_employed > 10) ? "text-emerald-200" : "text-slate-400"
+                                    )}>
+                                        {details.fundamental.details.return_on_capital_employed ? `${details.fundamental.details.return_on_capital_employed}%` : "N/A"}
+                                    </div>
+                                </div>
+
+                                {/* Altman Z-Score */}
+                                <div className={clsx("p-3 border rounded-lg",
+                                    details.fundamental.details.altman_z_score > 3 ? "bg-emerald-900/10 border-emerald-500/30" :
+                                        details.fundamental.details.altman_z_score < 1.8 ? "bg-rose-900/10 border-rose-500/30" : "bg-slate-900/30 border-white/10"
+                                )}>
+                                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">Altman Z-Score</div>
+                                    <div className={clsx("text-lg font-mono font-bold mt-1",
+                                        details.fundamental.details.altman_z_score > 3 ? "text-emerald-400" :
+                                            details.fundamental.details.altman_z_score < 1.8 ? "text-rose-400" : "text-yellow-400"
+                                    )}>
+                                        {details.fundamental.details.altman_z_score || "N/A"}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500">
+                                        {details.fundamental.details.altman_z_score > 3 ? "Safe Zone" :
+                                            details.fundamental.details.altman_z_score < 1.8 ? "Distress Risk" : "Grey Zone"}
+                                    </div>
+                                </div>
+
+                                {/* Beneish M-Score */}
+                                <div className={clsx("p-3 border rounded-lg",
+                                    details.fundamental.details.beneish_m_score < -1.78 ? "bg-emerald-900/10 border-emerald-500/30" :
+                                        "bg-rose-900/10 border-rose-500/30"
+                                )}>
+                                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">Beneish M-Score</div>
+                                    <div className={clsx("text-lg font-mono font-bold mt-1",
+                                        details.fundamental.details.beneish_m_score < -1.78 ? "text-emerald-400" : "text-rose-400"
+                                    )}>
+                                        {details.fundamental.details.beneish_m_score || "N/A"}
+                                    </div>
+                                    <div className="text-[10px] text-slate-500">
+                                        {details.fundamental.details.beneish_m_score < -1.78 ? "Unlikely Fraud" : "Check Accruals"}
+                                    </div>
+                                </div>
+
+                                {/* Interest Coverage */}
+                                <div className="p-3 bg-slate-900/30 border border-white/10 rounded-lg">
+                                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">Interest Cov.</div>
+                                    <div className={clsx("text-lg font-mono font-bold mt-1",
+                                        (details.fundamental.details.interest_coverage > 5) ? "text-emerald-400" :
+                                            (details.fundamental.details.interest_coverage < 1.5) ? "text-rose-400" : "text-slate-200"
+                                    )}>
+                                        {details.fundamental.details.interest_coverage ? `${details.fundamental.details.interest_coverage}x` : "N/A"}
+                                    </div>
+                                </div>
+
+                                {/* DSI */}
+                                <div className="p-3 bg-slate-900/30 border border-white/10 rounded-lg">
+                                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">Inv Days (DSI)</div>
+                                    <div className="text-lg font-mono font-bold text-slate-200 mt-1">
+                                        {details.fundamental.details.days_sales_in_inventory ? Math.round(details.fundamental.details.days_sales_in_inventory) : "N/A"}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                     </motion.div>
                 )}
 

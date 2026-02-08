@@ -99,10 +99,10 @@ const SmartDataRenderer: React.FC<{ data: any; depth?: number; label?: string }>
 
 const CollapsibleReport: React.FC<{ sections: any[] }> = ({ sections }) => {
     const [isExpanded, setIsExpanded] = useState(false);
-    
+
     // Determine a summary title
     const sectionNames = sections.map(s => s.section?.replace(/_/g, ' ')).filter(Boolean);
-    const title = sectionNames.length > 0 
+    const title = sectionNames.length > 0
         ? `Report Loaded: ${sectionNames.slice(0, 2).join(', ')}${sectionNames.length > 2 ? ` +${sectionNames.length - 2} more` : ''}`
         : `Report Content Loaded (${sections.length} sections)`;
 
@@ -120,7 +120,7 @@ const CollapsibleReport: React.FC<{ sections: any[] }> = ({ sections }) => {
                     <span className="truncate opacity-80">{title}</span>
                 </div>
             </button>
-            
+
             <AnimatePresence>
                 {isExpanded && (
                     <motion.div
@@ -174,6 +174,191 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                         {typeof parsedData === 'string' ? parsedData : JSON.stringify(parsedData, null, 2)}
                     </ReactMarkdown>
+                </div>
+            </div>
+        );
+    }
+
+    // --- New Financial Tools ---
+    if (toolName === 'get_insider_trades') {
+        const trades = parsedData.transactions || [];
+        return (
+            <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-zinc-200 font-medium text-xs uppercase tracking-wider">Insider Transactions</h4>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full ${parsedData.summary?.includes('Buying') ? 'bg-emerald-500/20 text-emerald-300' :
+                        parsedData.summary?.includes('Selling') ? 'bg-rose-500/20 text-rose-300' : 'bg-zinc-500/20 text-zinc-300'
+                        }`}>
+                        {parsedData.summary || 'Neutral'}
+                    </span>
+                </div>
+                <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    {trades.map((t: any, idx: number) => (
+                        <div key={idx} className="bg-white/5 p-2 rounded-md flex justify-between items-center text-xs">
+                            <div>
+                                <div className="font-medium text-zinc-200">{t.insider}</div>
+                                <div className="text-zinc-500 text-[10px]">{t.position} • {t.date}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className={t.transaction.includes('Buy') || t.transaction.includes('Purchase') ? 'text-emerald-400' : 'text-rose-400'}>
+                                    {t.transaction}
+                                </div>
+                                <div className="text-zinc-400 text-[10px]">
+                                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', notation: 'compact' }).format(t.value)}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
+
+    if (toolName === 'get_ownership_data') {
+        return (
+            <div className="space-y-2 text-xs">
+                <h4 className="text-zinc-200 font-medium uppercase tracking-wider mb-2">Ownership & Short Interest</h4>
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">Inst. Ownership</div>
+                        <div className="text-zinc-200 font-mono text-sm">
+                            {/* Risk Metrics Output */}
+                            {parsedData.altman_z_score !== undefined && (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Altman Z-Score */}
+                                        <div className={clsx(
+                                            "p-3 rounded-lg border",
+                                            parsedData.altman_z_score > 3 ? "bg-emerald-500/10 border-emerald-500/30" :
+                                                parsedData.altman_z_score < 1.8 ? "bg-red-500/10 border-red-500/30" :
+                                                    "bg-yellow-500/10 border-yellow-500/30"
+                                        )}>
+                                            <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Altman Z-Score</div>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className={clsx(
+                                                    "text-2xl font-bold",
+                                                    parsedData.altman_z_score > 3 ? "text-emerald-400" :
+                                                        parsedData.altman_z_score < 1.8 ? "text-red-400" :
+                                                            "text-yellow-400"
+                                                )}>
+                                                    {parsedData.altman_z_score}
+                                                </span>
+                                                <span className="text-xs text-zinc-500">
+                                                    {parsedData.altman_z_score > 3 ? "(Safe)" :
+                                                        parsedData.altman_z_score < 1.8 ? "(Distress)" : "(Grey Zone)"}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Beneish M-Score */}
+                                        <div className={clsx(
+                                            "p-3 rounded-lg border",
+                                            parsedData.beneish_m_score < -1.78 ? "bg-emerald-500/10 border-emerald-500/30" :
+                                                "bg-red-500/10 border-red-500/30"
+                                        )}>
+                                            <div className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-1">Beneish M-Score</div>
+                                            <div className="flex items-baseline gap-2">
+                                                <span className={clsx(
+                                                    "text-2xl font-bold",
+                                                    parsedData.beneish_m_score < -1.78 ? "text-emerald-400" : "text-red-400"
+                                                )}>
+                                                    {parsedData.beneish_m_score}
+                                                </span>
+                                                <span className="text-xs text-zinc-500">
+                                                    {parsedData.beneish_m_score < -1.78 ? "(Unlikely Manipulator)" : "(Possible Manipulator)"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                        <div className="bg-zinc-800/50 p-2 rounded border border-zinc-700/50">
+                                            <div className="text-[10px] text-zinc-500 uppercase">Interest Cov.</div>
+                                            <div className="text-sm font-mono text-zinc-200">{parsedData.interest_coverage_ratio}x</div>
+                                        </div>
+                                        <div className="bg-zinc-800/50 p-2 rounded border border-zinc-700/50">
+                                            <div className="text-[10px] text-zinc-500 uppercase">DSI (Days)</div>
+                                            <div className="text-sm font-mono text-zinc-200">{parsedData.days_sales_in_inventory}</div>
+                                        </div>
+                                        <div className="bg-zinc-800/50 p-2 rounded border border-zinc-700/50">
+                                            <div className="text-[10px] text-zinc-500 uppercase">Current Ratio</div>
+                                            <div className="text-sm font-mono text-zinc-200">{parsedData.current_ratio}</div>
+                                        </div>
+                                        <div className="bg-zinc-800/50 p-2 rounded border border-zinc-700/50">
+                                            <div className="text-[10px] text-zinc-500 uppercase">DSI Change</div>
+                                            <div className={clsx(
+                                                "text-sm font-mono",
+                                                parsedData.dsi_change_pct > 0.2 ? "text-red-400" : "text-zinc-200"
+                                            )}>
+                                                {parsedData.dsi_change_pct ? `${(parsedData.dsi_change_pct * 100).toFixed(1)}%` : 'N/A'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Advanced Ratios Output (Existing) */}
+                            {parsedData.institutional_ownership_pct ? `${(parsedData.institutional_ownership_pct * 100).toFixed(1)}%` : 'N/A'}
+                        </div>
+                    </div>
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">Insider Ownership</div>
+                        <div className="text-zinc-200 font-mono text-sm">
+                            {parsedData.insider_ownership_pct ? `${(parsedData.insider_ownership_pct * 100).toFixed(1)}%` : 'N/A'}
+                        </div>
+                    </div>
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">Short Float</div>
+                        <div className={`font-mono text-sm ${parsedData.short_percent_of_float > 0.15 ? 'text-amber-400' : 'text-zinc-200'}`}>
+                            {parsedData.short_percent_of_float ? `${(parsedData.short_percent_of_float * 100).toFixed(1)}%` : 'N/A'}
+                        </div>
+                    </div>
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">Short Ratio</div>
+                        <div className="text-zinc-200 font-mono text-sm">
+                            {parsedData.short_ratio || 'N/A'}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (toolName === 'get_advanced_ratios') {
+        return (
+            <div className="space-y-2 text-xs">
+                <h4 className="text-zinc-200 font-medium uppercase tracking-wider mb-2">Efficiency & Capital Allocation</h4>
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">ROCE</div>
+                        <div className="text-zinc-200 font-mono text-sm">
+                            {parsedData.return_on_capital_employed ? `${(parsedData.return_on_capital_employed * 100).toFixed(2)}%` : 'N/A'}
+                        </div>
+                    </div>
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">ROIC (Approx)</div>
+                        <div className={`font-mono text-sm ${parsedData.return_on_capital > 0.15 ? 'text-emerald-400' : 'text-zinc-200'}`}>
+                            {parsedData.return_on_capital ? `${(parsedData.return_on_capital * 100).toFixed(1)}%` : 'N/A'}
+                        </div>
+                    </div>
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">FCF Yield</div>
+                        <div className="text-zinc-200 font-mono text-sm">
+                            {parsedData.fcf_yield ? `${(parsedData.fcf_yield * 100).toFixed(2)}%` : 'N/A'}
+                        </div>
+                    </div>
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">Payout Ratio</div>
+                        <div className="text-zinc-200 font-mono text-sm">
+                            {parsedData.payout_ratio ? `${(parsedData.payout_ratio * 100).toFixed(1)}%` : 'N/A'}
+                        </div>
+                    </div>
+                    <div className="bg-white/5 p-2 rounded border border-white/5">
+                        <div className="text-zinc-500 text-[10px]">Rev/Share</div>
+                        <div className="text-zinc-200 font-mono text-sm">
+                            {parsedData.revenue_per_share || 'N/A'}
+                        </div>
+                    </div>
                 </div>
             </div>
         );
