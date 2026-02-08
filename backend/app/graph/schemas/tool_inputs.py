@@ -42,6 +42,10 @@ class MarketTrendsSearchInput(BaseModel):
 class ParallelSearchInput(BaseModel):
     """Input schema for parallel_search_market_trends tool."""
 
+    queries: List[str] = Field(
+        description="List of search queries to run in parallel. Example: ['NVDA earnings', 'AI chip market size']"
+    )
+
 
 class InsiderTradesInput(BaseModel):
     """Input schema for get_insider_trades tool."""

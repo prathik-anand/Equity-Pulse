@@ -381,6 +381,17 @@ async def executor_node(state: ChatState):
             except Exception as e:
                 execution_result = f"News fetch error: {e}"
 
+        elif tool_name == "parallel_search_market_trends":
+            queries = args.get("queries", [])
+            try:
+                from app.graph.tools import parallel_search_market_trends
+
+                # parallel_search_market_trends is a StructuredTool
+                result = parallel_search_market_trends.invoke({"queries": queries})
+                execution_result = f"Parallel Search Results:\n{result}"
+            except Exception as e:
+                execution_result = f"Parallel search error: {e}"
+
         else:
             execution_result = f"Unknown tool: {tool_name}"
 

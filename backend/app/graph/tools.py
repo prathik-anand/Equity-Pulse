@@ -559,6 +559,7 @@ def parallel_search_market_trends(queries: List[str]) -> str:
     """
     try:
         from langchain_community.utilities import DuckDuckGoSearchAPIWrapper
+        from langchain_community.tools import DuckDuckGoSearchRun
         import concurrent.futures
 
         # Helper to run a single query with retries
@@ -938,7 +939,7 @@ def get_risk_metrics(ticker: str) -> str:
         # PPE & Securities (for AQI) - Simplified to Non-Current Assets
         # AQI = (Non-Current Assets_t / Assets_t) / ...
         curr_assets_t = get_val(balance_sheet, "Total Current Assets", t)
-        curr_assets_t1 = get_val(balance_sheet, "Total Current Assets", t_minus_1)
+        # curr_assets_t1 unused
         ppe_t = get_val(balance_sheet, "Net PPE", t)  # Plant Property Equipment
         if ppe_t == 0:
             ppe_t = get_val(balance_sheet, "Net Tangible Assets", t)  # Fallback
@@ -968,7 +969,7 @@ def get_risk_metrics(ticker: str) -> str:
         try:
             cf = stock.cashflow
             cfo_t = get_val(cf, "Operating Cash Flow", t)
-        except:
+        except Exception:
             pass
 
         m_score = None
@@ -990,7 +991,7 @@ def get_risk_metrics(ticker: str) -> str:
 
             # AQI: Asset Quality Index
             # Asset Quality = 1 - ((Current Assets + PPE) / Total Assets)
-            aq_t = 1 - ((curr_assets_t + ppe_t) / assets_t) if assets_t else 0
+            # aq_t = 1 - ((curr_assets_t + ppe_t) / assets_t) if assets_t else 0
             # Simplify AQI Calculation if data is messy, or default to 1.0
             aqi = 1.0
 
