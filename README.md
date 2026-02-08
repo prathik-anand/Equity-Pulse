@@ -12,6 +12,9 @@
 
 ![EquityPulse Dashboard](https://github.com/user-attachments/assets/placeholder-image.png)
 
+### System Architecture
+![System Architecture](backend/docs/images/system_architecture.png)
+
 ## 💡 The Problem: Information Asymmetry
 Wall Street has teams of 50+ analysts working 100-hour weeks. They read every footnote, track every supply chain, and model every risk.
 **You have a day job and a Reddit tip.**
@@ -21,8 +24,9 @@ Most "AI for Finance" tools are just simple RAG wrappers. They search for 3-4 sn
 ## 🚀 The Solution: Autonomous Multi-Agent Reasoning
 EquityPulse is not a chatbot. It is an **Autonomous Investment Committee**. It orchestrates a team of 5 specialized AI agents, each mimicking a specific role in a hedge fund, to debate and analyze a stock from every angle.
 
-### "Full-Spectrum Reasoning" (Powered by Gemini 3.0 Pro)
-We **DO NOT** use traditional RAG. We feed the **ENTIRE Annual Report (10-K)**, Balance Sheets, P&L Statements, and Global Macro Data directly into Gemini 3.0 Pro.
+### "Full-Spectrum Reasoning" (Powered by Gemini 3.0 Pro & 3.0 Flash)
+*   **Backend Reasoning**: We feed the **ENTIRE Annual Report (10-K)** directly into **Gemini 3.0 Pro** for deep analysis.
+*   **Frontend Voice**: We use **Gemini 3.0 Flash** for sub-100ms latency voice interactions, creating a real-time conversation loop.
 
 ### 🌟 Key Features
 *   **Universal Multimodal Analysis**: Upload screenshots of news, partnership announcements, or charts. The agent analysis matches the pixel data with the financials.
@@ -47,6 +51,22 @@ We **DO NOT** use traditional RAG. We feed the **ENTIRE Annual Report (10-K)**, 
 5.  **Technical Analyst (The "Trader")** 📊
     *   *Focus*: RSI Divergences, Volume Profile, Stage Analysis.
     *   *Goal*: Time the entry.
+6.  **Portfolio Manager (The "CIO")** 🗣️
+    *   *Focus*: Synthesis, Conflict Resolution, Risk-Adjusted Returns.
+    *   *Goal*: The final decision maker. It aggregates all agent reports, weighs conflicting evidence, and produces the final investment thesis.
+
+## 💬 The "Analyst" Chat Architecture
+Beyond static report generation, EquityPulse features a stateful, multi-agent chat system designed to answer follow-up questions with the depth of a human analyst.
+
+*   **Image Analyzer (Vision)**: If an image is uploaded (chart, news snippet), this node extracts key insights and passes them as context to the rewriter, enabling "visual reasoning".
+*   **Query Rewriter**: Decomposes complex user questions into specific sub-queries (e.g., "Impact of Rate Cuts" → "Sector Rotation history", "Cost of Capital changes").
+*   **Planner Node**: Dynamically creates an execution plan. It decides whether to answer directly, consult the annual report, or launch a **Parallel Web Search** for real-time market trends.
+*   **Parallel Search Executor**: Runs loose-coupled, concurrent searches to gather diverse viewpoints (Competitor news, Regulatory filings, Macro data) in seconds.
+*   **Validator Node**: A self-reflection loop. If the gathered data is insufficient, it rejects the output and triggers a **Replanning Phase** to try a different strategy.
+*   **Responder Node**: Synthesizes the final answer, citing specific page numbers from the report and linking to external sources.
+
+### Chat Workflow
+![Chat Workflow](backend/docs/images/chat_workflow.png)
 
 ## ⚔️ The "Conflict" Engine
 Most AIs agree with themselves. **Ours argue.**
