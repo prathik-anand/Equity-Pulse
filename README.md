@@ -51,9 +51,12 @@ EquityPulse is not a chatbot. It is an **Autonomous Investment Committee**. It o
 5.  **Technical Analyst (The "Trader")** 📊
     *   *Focus*: RSI Divergences, Volume Profile, Stage Analysis.
     *   *Goal*: Time the entry.
-6.  **Portfolio Manager (The "CIO")** 🗣️
+6.  **Management Agent (The "CIO")** 🗣️
     *   *Focus*: Synthesis, Conflict Resolution, Risk-Adjusted Returns.
     *   *Goal*: The final decision maker. It aggregates all agent reports, weighs conflicting evidence, and produces the final investment thesis.
+
+### Analysis Agent Workflow
+![Analysis Agent Workflow](backend/docs/images/analysis_workflow.png)
 
 ## 💬 The "Analyst" Chat Architecture
 Beyond static report generation, EquityPulse features a stateful, multi-agent chat system designed to answer follow-up questions with the depth of a human analyst.
