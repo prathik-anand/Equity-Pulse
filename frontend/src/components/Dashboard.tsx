@@ -21,7 +21,6 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
     // --- Chat Selection Logic ---
     const [selectionTooltip, setSelectionTooltip] = useState<{ x: number, y: number, text: string } | null>(null);
     const [chatContext, setChatContext] = useState<{ selectedText: string } | undefined>(undefined);
-    const [chatMessage, setChatMessage] = useState(''); // For Quick Ask bar
 
     useEffect(() => {
         const handleMouseUp = (e: MouseEvent) => {
@@ -828,47 +827,12 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                 )}
             </AnimatePresence>
 
-            {/* Quick Ask Bar - Sticky Bottom */}
-            <div className="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-40 w-full max-w-2xl px-4 pointer-events-auto">
-                <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full blur opacity-25 group-hover:opacity-50 transition duration-1000"></div>
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            const form = e.target as HTMLFormElement;
-                            const input = form.elements.namedItem('query') as HTMLInputElement;
-                            if (input.value.trim()) {
-                                setChatMessage(input.value);
-                                // input.value = ''; // Keep it visible or clear? Clearing is better for "sent" feel
-                                setTimeout(() => { input.value = ''; }, 100);
-                            }
-                        }}
-                        className="relative flex items-center bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-full p-1.5 shadow-2xl transition-transform group-hover:scale-[1.01]"
-                    >
-                        <div className="bg-indigo-500/20 p-2 rounded-full ml-1">
-                            <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
-                        </div>
-                        <input
-                            name="query"
-                            type="text"
-                            autoComplete="off"
-                            placeholder="Ask EquityPulse about risks, management, or growth..."
-                            className="flex-1 bg-transparent border-none focus:ring-0 text-white placeholder-slate-400 text-sm font-medium h-10 px-3 outline-none"
-                        />
-                        <button type="submit" className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-full transition-colors mr-1">
-                            <ArrowUpRight className="w-4 h-4" />
-                        </button>
-                    </form>
-                </div>
-            </div>
-
             {/* Chat Widget */}
             <ChatWidget
                 sessionId={sessionId} // This is the user session ID (client side)
                 reportId={data.id}    // This is the backend Report ID
                 activeTab={activeTab}
                 initialContext={chatContext}
-                initialMessage={chatMessage}
                 onCloseSelection={() => setChatContext(undefined)}
             />
         </div>
