@@ -21,10 +21,14 @@ Most "AI for Finance" tools are just simple RAG wrappers. They search for 3-4 sn
 ## 🚀 The Solution: Autonomous Multi-Agent Reasoning
 EquityPulse is not a chatbot. It is an **Autonomous Investment Committee**. It orchestrates a team of 5 specialized AI agents, each mimicking a specific role in a hedge fund, to debate and analyze a stock from every angle.
 
-### The "Zero-Loss" Advantage (Powered by Gemini 1.5 Pro)
-We **DO NOT** use traditional RAG (Retrieval Augmented Generation) which chops documents into tiny, meaningless chunks.
-Instead, we leverage **Gemini's 2 Million Token Context Window** to feed the **ENTIRE Annual Report (10-K)**, recent news, and financial statements directly into the model's brain.
-*Result: Zero context loss. Deep, cross-referenced reasoning.*
+### "Full-Spectrum Reasoning" (Powered by Gemini 3.0 Pro)
+We **DO NOT** use traditional RAG. We feed the **ENTIRE Annual Report (10-K)**, Balance Sheets, P&L Statements, and Global Macro Data directly into Gemini 3.0 Pro.
+
+### 🌟 Key Features
+*   **Universal Multimodal Analysis**: Upload screenshots of news, partnership announcements, or charts. The agent analysis matches the pixel data with the financials.
+*   **Text-to-Speech & Voice Control**: Use the integrated Voice features to have natural, spoken conversations with your AI Investment Committee.
+*   **Deep Financial & Forensic Analysis**: Analyzes **50+ Financial Parameters** and **Hundreds of Qualitative Signals** (Geopolitics, Management Integrity, Macro Trends). See [PARAMETERS.md](PARAMETERS.md).
+*   **Smart Annotations**: Highlight any text in the report to instantly ask the agent about that specific paragraph.
 
 ## 🕵️ The Agents (The "Swarm")
 
@@ -49,7 +53,7 @@ Most AIs agree with themselves. **Ours argue.**
 The *Portfolio Manager* node takes the conflicting reports (e.g., "Quant says SELL, Fundamental says BUY") and synthesizes a nuanced final verdict, just like a real investment committee meeting.
 
 ## 🛠️ Tech Stack
--   **AI Core**: Google Gemini 1.5 Pro / Flash Thinking (Long Context Reasoning).
+-   **AI Core**: Google Gemini 3.0 Pro (Long Context Reasoning).
 -   **Orchestration**: LangGraph (Stateful Multi-Agent Workflow).
 -   **Backend**: Python, FastAPI, Async SQLModel.
 -   **Frontend**: React 19, Tailwind CSS (Premium "Dark Data" UI).
