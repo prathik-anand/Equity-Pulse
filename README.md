@@ -2,7 +2,9 @@
 
 **"The Hedge Fund in Your Pocket"**
 
-> **Winner of the [Hackathon Name] Hackathon (Target)**
+An **Autonomous Multi-Agent Investment Platform** powered by **Gemini 3.0 Pro** and **LangGraph**. EquityPulse orchestrates a swarm of 6 specialized agents (Quant, Fundamental, Risk, Technical, Macro, Management) to perform deep forensic analysis, verify data with **Computer Vision**, and resolve conflicting signals into a single, institutional-grade investment thesis—in minutes.
+
+
 >
 > *Global Investing Crisis:*
 > * **India**: 91% of retail traders lose money (SEBI).
