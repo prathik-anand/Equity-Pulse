@@ -426,8 +426,28 @@ async def validator_node(state: ChatState):
 
     # Format results for validation
     results_str = ""
+    has_valid_search_results = False
+
     for key, val in execution_results.items():
         results_str += f"\n[Step {key}]: {val}\n"
+        # Simple heuristic: if we ran a search and got results without error -> trust it
+        if "web_search" in key or "parallel_search" in key:
+            if (
+                "search error" not in str(val).lower()
+                and "no results found" not in str(val).lower()
+            ):
+                has_valid_search_results = True
+
+    # OPTIMIZATION: Relaxed Validation
+    # If we have valid search results, assume sufficiency to save time/tokens
+    # unless the query was very complex or required multi-step reasoning that isn't obvious.
+    if has_valid_search_results and len(plan) <= 2:
+        print("Validation: Skipping LLM check (High confidence in search results)")
+        return {
+            "validator_status": "sufficient",
+            "feedback": "Auto-validated: Search results found.",
+            "validation_attempts": current_attempts,
+        }
 
     validator_prompt = f"""You are a Senior Financial Analyst Team Lead validating your junior's work.
 
@@ -585,9 +605,26 @@ chat_workflow.set_conditional_entry_point(
     {"image_analyzer": "image_analyzer", "query_rewriter": "query_rewriter"},
 )
 
+
+# Conditional edge from Query Rewriter (New: Ambiguity Check)
+def route_query_rewrite(state: ChatState):
+    if state.get("needs_clarification"):
+        print("--- Routing to Responder (Needs Clarification) ---")
+        # Set validator status to trigger clarification message in responder
+        state["validator_status"] = "needs_clarification"
+        return "responder"
+    return "planner"
+
+
+chat_workflow.add_conditional_edges(
+    "query_rewriter",
+    route_query_rewrite,
+    {"planner": "planner", "responder": "responder"},
+)
+
 # Edges
 chat_workflow.add_edge("image_analyzer", "query_rewriter")
-chat_workflow.add_edge("query_rewriter", "planner")
+# chat_workflow.add_edge("query_rewriter", "planner") # Replaced with conditional edge above
 chat_workflow.add_edge("planner", "executor")
 
 
