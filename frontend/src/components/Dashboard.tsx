@@ -681,7 +681,7 @@ const Dashboard: React.FC<DashboardProps> = ({ sessionId, onBack }) => {
                                         (details.fundamental.details.return_on_capital_employed > 20) ? "text-emerald-400" :
                                             (details.fundamental.details.return_on_capital_employed > 10) ? "text-emerald-200" : "text-slate-400"
                                     )}>
-                                        {details.fundamental.details.return_on_capital_employed ? `${details.fundamental.details.return_on_capital_employed}%` : "N/A"}
+                                        {details.fundamental.details.return_on_capital_employed ? `${(details.fundamental.details.return_on_capital_employed * 100).toFixed(2)}%` : "N/A"}
                                     </div>
                                 </div>
 

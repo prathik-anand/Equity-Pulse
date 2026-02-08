@@ -137,6 +137,7 @@ const ReasoningStep: React.FC<{ log: LogEntry }> = ({ log }) => {
 const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isProcessing = false }) => {
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [isExpanded, setIsExpanded] = useState(true);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const tryParseLog = (logItem: any): LogEntry => {
@@ -184,10 +185,17 @@ const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isPr
 
     // Auto-scroll logic
     useEffect(() => {
-        if (scrollRef.current) {
+        if (scrollRef.current && shouldAutoScroll) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
-    }, [logs.length]);
+    }, [logs.length, shouldAutoScroll]);
+
+    const handleScroll = () => {
+        if (!scrollRef.current) return;
+        const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+        const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+        setShouldAutoScroll(isAtBottom);
+    };
 
     return (
         <div className="mt-8 mb-12">
@@ -223,6 +231,7 @@ const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isPr
                         >
                             <div
                                 ref={scrollRef}
+                                onScroll={handleScroll}
                                 className="max-h-[500px] overflow-y-auto p-4 space-y-1 font-sans"
                             >
                                 {logs.length === 0 ? (

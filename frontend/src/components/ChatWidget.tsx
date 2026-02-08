@@ -395,6 +395,8 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
     const [sessions, setSessions] = useState<any[]>([]);
     const [previewImage, setPreviewImage] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const imageUploadRef = useRef<ImageUploadRef>(null);
 
@@ -514,17 +516,25 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
     useEffect(() => {
         if (messages.length === 0) return;
 
-        // Only scroll if we are streaming OR if a new message was added
-        const lastMsg = messages[messages.length - 1];
-        if (lastMsg?.isStreaming || isOpen) {
-            // Only auto-scroll if near bottom or if it's the very start of a response
-            // For now, simpler: scroll to bottom if streaming
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        } else {
-            // If not streaming (e.g. implementation), scroll once
+        // Only scroll if we are enabled to
+        if (shouldAutoScroll) {
             messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
         }
-    }, [messages.length, isOpen]); // Removed 'messages' content dependency to avoid jitters on every token, only unpredictable length changes
+    }, [messages, isOpen, shouldAutoScroll]);
+
+    // Handle user manual scrolling
+    const handleScroll = () => {
+        if (!scrollContainerRef.current) return;
+
+        const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+        const isAtBottom = scrollHeight - scrollTop - clientHeight < 50; // 50px threshold
+
+        if (isAtBottom) {
+            setShouldAutoScroll(true);
+        } else {
+            setShouldAutoScroll(false);
+        }
+    };
 
     // Auto-resize textarea
     useEffect(() => {
@@ -899,7 +909,11 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
             )}
 
             {/* Messages Area - Unified Turn Cards */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 font-sans">
+            <div
+                ref={scrollContainerRef}
+                onScroll={handleScroll}
+                className="flex-1 overflow-y-auto p-4 space-y-4 font-sans"
+            >
                 {messages.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-50 mt-10">
                         <div className="p-4 bg-white/5 rounded-full">
