@@ -95,6 +95,7 @@ class WebSearchOutput(BaseModel):
     """Output schema for web search tools (governance and market trends)."""
 
     query: str = Field(description="The search query that was executed")
+    results: Optional[str] = Field(None, description="The search results text")
     error: Optional[str] = Field(None, description="Error message if search failed")
 
 

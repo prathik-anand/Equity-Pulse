@@ -16,6 +16,7 @@ interface ChatWidgetProps {
     initialContext?: {
         selectedText: string;
     };
+    initialMessage?: string; // New prop for auto-sending
     onCloseSelection?: () => void;
 }
 
@@ -177,11 +178,11 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
                         Visual Analysis
                     </div>
                     <div className="pl-3 border-l border-white/10 ml-1 leading-relaxed prose prose-invert prose-sm max-w-none text-zinc-200 [&_strong]:text-white [&_p]:my-1.5">
-                        <ReactMarkdown 
+                        <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
-                                p: ({node, ...props}) => <p className="leading-relaxed mb-2 last:mb-0" {...props} />,
-                                strong: ({node, ...props}) => <strong className="font-bold text-white" {...props} />,
+                                p: ({ node, ...props }) => <p className="leading-relaxed mb-2 last:mb-0" {...props} />,
+                                strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
                             }}
                         >
                             {typeof parsed === 'string' ? parsed : (parsed.content || step.content)}
@@ -382,7 +383,7 @@ const formatToolInput = (tool: string, input: any): string => {
 // Generate unique session ID
 const generateSessionId = () => `chat_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessionId, reportId, activeTab, initialContext, onCloseSelection }) => {
+export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessionId, reportId, activeTab, initialContext, initialMessage, onCloseSelection }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(true);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -396,6 +397,14 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
     const imageUploadRef = useRef<ImageUploadRef>(null);
+
+    // Auto-send initialMessage from parent
+    useEffect(() => {
+        if (initialMessage && initialMessage.trim()) {
+            setIsOpen(true);
+            handleSend(initialMessage);
+        }
+    }, [initialMessage]);
 
     // Load sessions list
     const loadSessions = async () => {

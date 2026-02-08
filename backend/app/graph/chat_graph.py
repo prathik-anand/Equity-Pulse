@@ -213,7 +213,8 @@ async def planner_node(state: ChatState):
     needs_web = state.get("needs_web_search", False)
     needs_report = state.get("needs_report_data", True)
     image_summary = state.get("image_summary")
-    report_context = state.get("report_context", {})
+    image_summary = state.get("image_summary")
+    # report_context is available in state but not needed for planning logic directly
     metadata = state.get("user_metadata", {})
 
     # REPLANNING CONTEXT
@@ -248,14 +249,14 @@ CRITICAL INSTRUCTION: You MUST try a DIFFERENT strategy than the previous attemp
 - For complex queries → combine multiple tools in sequence
 
 ## AVAILABLE TOOLS (Level 2)
-1. **read_report(section)**: Read from financial report. Sections: {list(report_context.keys())}
-2. **web_search(query)**: Search web via DuckDuckGo for current news/trends (Single Query)
-3. **parallel_search_market_trends(queries)**: Run multiple searches at once. Input is a LIST of strings.
+1. **web_search(query)**: Search web via DuckDuckGo for current news/trends (Single Query)
+2. **parallel_search_market_trends(queries)**: Run multiple searches at once. Input is a LIST of strings.
    - Use this when 'Sub-queries' list has multiple items.
-4. **get_company_news(ticker)**: Get latest news for a specific stock
-5. **direct_answer**: Answer directly without tools (for simple questions)
+3. **get_company_news(ticker)**: Get latest news for a specific stock
+4. **direct_answer**: Answer directly without tools (for simple questions)
 
 ## CURRENT CONTEXT
+- **FULL REPORT AVAILABLE**: You have the complete financial report in your context. You do NOT need to search for it. READ IT DIRECTLY.
 - Rewritten Query: "{rewritten_query}"
 - Sub-queries: {sub_queries} (Multiple search queries? {use_parallel_search})
 - Needs Web Search: {needs_web}
@@ -275,10 +276,10 @@ CRITICAL INSTRUCTION: You MUST try a DIFFERENT strategy than the previous attemp
 }}
 
 ## EXAMPLES
-Query: "What are the risks?" → {{"plan": [{{"tool": "read_report", "args": {{"section": "Risk"}}}}]}}
+Query: "What are the risks?" → {{"plan": [{{"tool": "direct_answer", "args": {{}}}}]}} (Answer from context)
 Query: "Latest news about NVDA Rubin" → {{"plan": [{{"tool": "web_search", "args": {{"query": "NVIDIA Rubin 2024 announcement"}}}}]}}
 Query: "Hi" → {{"plan": [{{"tool": "direct_answer", "args": {{}}}}]}}
-Complex: "How will this news affect the stock?" → {{"plan": [{{"tool": "web_search", "args": {{"query": "..."}}}}, {{"tool": "read_report", "args": {{"section": "Summary"}}}}]}}
+Complex: "How will this news affect the stock?" → {{"plan": [{{"tool": "web_search", "args": {{"query": "..."}}}}]}}
 """
 
     try:
@@ -326,7 +327,6 @@ async def executor_node(state: ChatState):
     print("--- Executor Node ---")
     plan = state.get("plan", [])
     current_step = state.get("current_step", 0)
-    report_context = state.get("report_context", {})
 
     if not plan or current_step >= len(plan):
         return {}
@@ -341,23 +341,6 @@ async def executor_node(state: ChatState):
     try:
         if tool_name == "direct_answer":
             execution_result = "(Direct answer - no tool execution needed)"
-
-        elif tool_name == "read_report":
-            section = args.get("section", "")
-            found_data = []
-            for sec_name, content in report_context.items():
-                if section.lower() in sec_name.lower():
-                    found_data.append({"section": sec_name, "content": content})
-            if found_data:
-                # Return valid JSON string of the list
-                execution_result = json.dumps(found_data)
-            else:
-                execution_result = json.dumps(
-                    {
-                        "error": f"Section '{section}' not found",
-                        "available_sections": list(report_context.keys()),
-                    }
-                )
 
         elif tool_name == "web_search":
             query = args.get("query", "")
@@ -564,7 +547,7 @@ async def responder_node(state: ChatState):
 {context_str if context_str.strip() else "(No tool execution data)"}
 
 ## REPORT CONTEXT (Reference)
-{str(report_context)[:1500] if report_context else "(No report data)"}
+{str(report_context) if report_context else "(No report data)"}
 
 ## INSTRUCTIONS
 1. **DIRECTLY answer the user's question** - this is your #1 priority
