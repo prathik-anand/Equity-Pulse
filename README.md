@@ -12,7 +12,7 @@ An **Autonomous Multi-Agent Investment Platform** powered by **Gemini 3.0 Pro** 
 > * **Europe**: 76-89% of retail CFD accounts lose money (ESMA/FCA).
 > * *EquityPulse exists to fix this information asymmetry.*
 
-![EquityPulse Dashboard](https://github.com/user-attachments/assets/placeholder-image.png)
+![EquityPulse Dashboard](docs/marketing/thumbnail.png)
 
 ### System Architecture
 ![System Architecture](backend/docs/images/system_architecture.png)
