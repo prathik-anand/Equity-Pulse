@@ -4,7 +4,11 @@
 
 > **Winner of the [Hackathon Name] Hackathon (Target)**
 >
-> *91% of retail traders lose money in derivatives (SEBI, 2024). EquityPulse exists to fix that.*
+> *Global Investing Crisis:*
+> * **India**: 91% of retail traders lose money (SEBI).
+> * **USA**: 72% failure rate for day traders (FINRA).
+> * **Europe**: 76-89% of retail CFD accounts lose money (ESMA/FCA).
+> * *EquityPulse exists to fix this information asymmetry.*
 
 ![EquityPulse Dashboard](https://github.com/user-attachments/assets/placeholder-image.png)
 
