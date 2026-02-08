@@ -211,8 +211,7 @@ async def planner_node(state: ChatState):
     )
     sub_queries = state.get("sub_queries", [])
     needs_web = state.get("needs_web_search", False)
-    needs_report = state.get("needs_report_data", True)
-    image_summary = state.get("image_summary")
+    # needs_report variable removed as we inject full context
     image_summary = state.get("image_summary")
     # report_context is available in state but not needed for planning logic directly
     metadata = state.get("user_metadata", {})
@@ -242,7 +241,7 @@ CRITICAL INSTRUCTION: You MUST try a DIFFERENT strategy than the previous attemp
 ## WORKFLOW INSTRUCTIONS (Level 1)
 - For simple/conversational queries → direct_answer
 - For questions about attached images → image context already available
-- For questions needing report data → use read_report tool
+- For questions needing report data → DIRECTLY ANSWER (Full report is in your context)
 - For questions needing current news/trends:
     - If multiple sub-queries are listed → use `parallel_search_market_trends` (PREFERRED for acquiring diverse data)
     - If single query → use `web_search` or `get_company_news`
@@ -260,7 +259,6 @@ CRITICAL INSTRUCTION: You MUST try a DIFFERENT strategy than the previous attemp
 - Rewritten Query: "{rewritten_query}"
 - Sub-queries: {sub_queries} (Multiple search queries? {use_parallel_search})
 - Needs Web Search: {needs_web}
-- Needs Report Data: {needs_report}
 - Image Summary: {image_summary[:300] if image_summary else "None"}
 - Active Tab: {metadata.get("active_tab", "Summary")}
 
