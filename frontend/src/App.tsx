@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Search from './components/Search';
 import Dashboard from './components/Dashboard';
+import LandingPage from './components/LandingPage';
 import { triggerAnalysis } from './api';
 
 // Helper function to format relative time
@@ -22,6 +23,7 @@ const formatRelativeTime = (dateString: string): string => {
 };
 
 function App() {
+  const [isLaunched, setIsLaunched] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -79,6 +81,10 @@ function App() {
     setSessionId(null);
     fetchHistory();
   };
+
+  if (!isLaunched) {
+    return <LandingPage onLaunch={() => setIsLaunched(true)} />;
+  }
 
   return (
     <div className="min-h-screen h-screen bg-background text-foreground font-sans selection:bg-primary/20 flex overflow-hidden">
