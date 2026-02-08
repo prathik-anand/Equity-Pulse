@@ -1,0 +1,37 @@
+=== TITLE (Pick ONE) ========================================================
+I Built an AI Hedge Fund in My Pocket (Beating the 91% Stat) 🚀
+
+(OR)
+
+EquityPulse: Intelligent AI Investment Committee (Powered by Gemini 3.0 Pro) 🧠📈
+
+=== DESCRIPTION (Copy ALL of this) ===========================================
+Did you know 91% of retail traders lose money? Wall Street has armies of analysts; we have day jobs and Reddit tips. That changes today.
+
+Meet **EquityPulse**: The "Hedge Fund in Your Pocket".
+
+EquityPulse isn't just a chatbot—it's an **Autonomous Multi-Agent Platform** that simulates a professional investment committee. Instead of summarizing news, 5 specialized AI agents (Fundamental, Quant, Risk, Technical, and Management) debate every stock from every angle using **1 Million Token Context** via Google Gemini 3.0 Pro.
+
+🔥 **Agentic Workflow Power:**
+This system uses advanced **Agentic Workflows** where agents can plan, execute tools, validate their own outputs, and even retry if they fail—mirroring human reasoning loops.
+
+✨ **Key Features:**
+🔹 **Real-Time Reasoning**: Watch agents debate NVIDIA's valuation live.
+🔹 **Deep Dive Analysis**: 50+ Financial Parameters (ROIC, Altman Z-Score) analyzed instantly.
+🔹 **Multimodal Intelligence**: Upload charts or partnership memos—our Vision Agent reads pixels like a pro.
+🔹 **Voice Control**: Talk to your portfolio manager using Gemini 3.0 Flash.
+
+🛠️ **Tech Stack:**
+🚀 **AI Model**: Google Gemini 3.0 Pro & Flash
+🐍 **Backend**: Python (LangGraph for Orchestration)
+⚛️ **Frontend**: React 19 + Tailwind CSS (Dark Mode UI)
+🔥 **Database & Storage**: Supabase (PostgreSQL + Storage)
+🔎 **Search**: DuckDuckGo (Parallel Search Execution)
+
+👇 **Links:**
+💻 **GitHub Repo**: [PASTE YOUR GITHUB LINK HERE]
+
+#AI #Investing #Gemini #StockMarket #Python #React #Supabase #AgenticAI #Hackathon
+
+=== TAGS (Copy and paste into "Tags" box) ===================================
+EquityPulse, AI Investing, Hedge Fund AI, Gemini 3.0 Pro, Google Gemini Hackathon, Stock Market Analysis, NVIDIA Stock Analysis, Algorithmic Trading, Python Finance, LangGraph Agents, React Dark Mode, Autonomous Agents, Financial Analysis AI, Quant Trading, Investment Committee, Supabase, Agentic Workflow, Multi-Agent System

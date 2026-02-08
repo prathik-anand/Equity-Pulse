@@ -1,14 +1,14 @@
 # EquityPulse Setup & Testing Guide 🚀
 
-This guide provides step-by-step instructions to set up **EquityPulse** locally for testing and development.
+This guide provides step-by-step instructions to set up **EquityPulse** locally.
 
 ## 📋 Prerequisites
 
 *   **Python 3.11+**
 *   **Node.js 18+**
-*   **Docker & Docker Compose** (Required for Langfuse Tracing)
-*   **Supabase Account** (Free Tier is fine)
-*   **Google Gemini API Key** (Access to Gemini 3.0 Pro & Flash)
+*   **Supabase Account** (Free Tier)
+*   **Google Gemini API Key** (Must have access to Gemini 3.0 Preview)
+*   *(Optional)* **Docker** (Only if you want Langfuse Tracing)
 
 ---
 
@@ -22,71 +22,52 @@ EquityPulse uses Supabase for the PostgreSQL database and image storage.
     *   Go to **Settings > Database**.
     *   Copy the **Connection String (URI)**.
     *   *Format*: `postgresql://postgres.[ref]:[password]@[region].pooler.supabase.com:5432/postgres`
-    *   (Note: If you use the Transaction pooler port 6543, ensure your client supports prepared statements or disable them).
 3.  **Storage Bucket**:
     *   Go to **Storage** in the sidebar.
-    *   Create a new **Public** bucket named `chat-images`. (Must be Public for frontend access).
+    *   Create a new **Public** bucket named `chat-images`. (Must be Public).
 4.  **API Keys**:
     *   Go to **Settings > API**.
     *   Copy the `Project URL` and `anon` public key.
 
-### 2. Langfuse (Tracing)
-We use Langfuse to trace agent reasoning steps. It runs locally via Docker.
+### 2. Langfuse (Optional Tracing)
+*If you don't want to use Langfuse, you can skip this step and leave the ENV keys blank.*
 
 1.  Ensure Docker Desktop is running.
-2.  Navigate to the backend folder:
-    ```bash
-    cd backend
-    ```
-3.  Start Langfuse:
-    ```bash
-    bash start_langfuse.sh
-    ```
-    *   This will pull the Docker image and start it at `http://localhost:3000`.
-    *   (You don't need to log in to Langfuse for basic local tracing if using the provided config, or signs up locally).
+2.  Run `bash backend/start_langfuse.sh` to start the local instance.
 
 ---
 
 ## 🔑 Step 2: Environment Configuration
 
-You need to configure both the Backend and Frontend variables.
-
 ### Backend (`/backend/.env`)
 
-1.  **Copy the example file**:
-    ```bash
-    cd backend
-    cp .env.example .env
-    ```
+1.  **Copy the example**: `cp backend/.env.example backend/.env`
 2.  **Edit `.env`**:
     ```ini
-    # Database (From Supabase Step 1)
+    # Database (From Supabase)
     DATABASE_URL=postgresql+asyncpg://postgres......
 
-    # AI Model (MUST be Gemini 3.0 Pro)
-    GEMINI_MODEL_NAME=gemini-3-pro
+    # AI Model (Gemini 3.0 Preview)
+    # Note: If looking for "Gemini 3.4", use these preview strings
+    GEMINI_MODEL_NAME=gemini-3-pro-preview
     GOOGLE_API_KEY=your_google_api_key_here
 
-    # Langfuse (Local Docker)
-    LANGFUSE_SECRET_KEY=sk-lf-...  # Get these from http://localhost:3000 if needed
-    LANGFUSE_PUBLIC_KEY=pk-lf-...
-    LANGFUSE_HOST=http://localhost:3000
+    # Langfuse (Leave commented out to disable)
+    # LANGFUSE_SECRET_KEY=sk-lf-...
+    # LANGFUSE_PUBLIC_KEY=pk-lf-...
+    # LANGFUSE_HOST=http://localhost:3000
     ```
 
 ### Frontend (`/frontend/.env`)
 
-1.  **Copy the example file**:
-    ```bash
-    cd ../frontend
-    cp .env.example .env
-    ```
+1.  **Copy the example**: `cp frontend/.env.example frontend/.env`
 2.  **Edit `.env`**:
     ```ini
-    # Voice (MUST be Gemini 3.0 Flash)
+    # Voice (Gemini 3.0 Flash Preview)
     VITE_GEMINI_API_KEY=your_google_api_key
-    VITE_GEMINI_MODEL_NAME=gemini-3-flash
+    VITE_GEMINI_MODEL_NAME=gemini-3-flash-preview
 
-    # Supabase (From Step 1)
+    # Supabase
     VITE_SUPABASE_URL=https://your-project.supabase.co
     VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
     VITE_SUPABASE_BUCKET=chat-images
@@ -94,62 +75,46 @@ You need to configure both the Backend and Frontend variables.
 
 ---
 
-## 📦 Step 3: Backend Installation & Migrations
+## 📦 Step 3: Installation & Migrations
 
-1.  **Install Dependencies**:
+1.  **Install Backend**:
     ```bash
     cd backend
     python3 -m venv .venv
     source .venv/bin/activate
     pip install uv && uv sync
-    # Or: pip install -r requirements.txt
     ```
 
-2.  **Run Database Migrations (CRITICAL)**:
-    Setup the database schema in Supabase.
+2.  **Run Migrations (CRITICAL)**:
     ```bash
     alembic upgrade head
+    ```
+
+3.  **Install Frontend**:
+    ```bash
+    cd ../frontend
+    npm install
     ```
 
 ---
 
 ## 🚀 Step 4: Running the App
 
-### Option A: Quick Start (Linux/Mac)
-From the root directory:
+### Option A: Quick Start script
 ```bash
 chmod +x start.sh
 ./start.sh
 ```
-*   Starts Langfuse (Docker), Backend (Port 8001), and Frontend (Port 5173).
 
 ### Option B: Manual Start
-
-**Terminal 1 (Backend):**
-```bash
-cd backend
-source .venv/bin/activate
-uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload
-```
-
-**Terminal 2 (Frontend):**
-```bash
-cd frontend
-npm install
-npm run dev
-```
+*   **Backend**: `uvicorn app.main:app --host 127.0.0.1 --port 8001 --reload`
+*   **Frontend**: `npm run dev`
 
 ---
 
 ## 🧪 Testing Instructions
 
-1.  **Health Check**: Open [http://localhost:8001/health](http://localhost:8001/health) to confirm backend is running (`{"status": "ok"}`).
-2.  **Frontend**: Open [http://localhost:5173](http://localhost:5173).
-3.  **Run a Test Analysis**:
-    *   Search: `TSLA` (Tesla).
-    *   Check Terminal/Langfuse: Verify logs appear showing "Fundamental Agent", "Quant Agent" etc.
-4.  **Test Voice (Flash)**:
-    *   Click Mic -> Speak -> Verify accurate text transcription.
-5.  **Test Upload (Supabase)**:
-    *   Upload an image.
-    *   Verify it appears in your Supabase `chat-images` bucket dashboard.
+1.  **Health Check**: [http://localhost:8001/health](http://localhost:8001/health) -> `{"status": "ok"}`
+2.  **Frontend**: Load [http://localhost:5173](http://localhost:5173).
+3.  **Test Voice**: Click Mic -> Speak -> Verify transcription.
+4.  **Test Analysis**: Search `GOOGL`. Verify standard log output in terminal.

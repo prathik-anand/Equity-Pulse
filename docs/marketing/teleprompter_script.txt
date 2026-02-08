@@ -1,0 +1,39 @@
+I've been investing in the equity markets for more than 8 years. And to be honest, I found myself unable to even beat the index funds.
+
+When I researched this, I realized it's not just me. 91% of retail investors lose money.
+
+Why? Because we are outgunned. Wall Street has teams of analysts; we have day jobs.
+
+That's why I built EquityPulse. It is a Hedge Fund in Your Pocket.
+
+Let me give you a demo. Let's run an analysis for one of our favorites: the AI giant, NVIDIA.
+
+You can see the logs in real-time. This isn't a chatbot making things up; these are specialized agents—Fundamental, Quant, Risk, Technical—tracing their reasoning and debating the stock live.
+
+Once it's done, you see the Portfolio Manager's Summary. It aggregates everything. For example, it gives an 8/10 on Valuation because it weighs the growth against the premium.
+
+Let's look at the Technical Analysis. You see the Simple Moving Averages, RSI, MACD, and other indicators charted right here. It gives you the relative strength, not just the price action.
+
+Now, the Fundamental Analysis. Most people only look at basic parameters like P/E ratios. Those are subjective and often misleading.
+
+We consider 50+ Quantitative parameters and hundreds of qualitative items.
+
+We verify these facts against the actual report. You can visually see the health of the company: Green is Good. Yellow is Moderate. Red is Dangerous.
+
+This applies across all our agents.
+
+This is where 90% of investors fail: Sector & Management Analysis.
+
+Fundamentals tell you what happened. Sector analysis tells you what's coming—business cycles, headwinds, and tailwinds.
+
+And Management Analysis is crucial. We assess qualitative terms—geopolitical risks, leadership integrity—that numbers simply miss.
+
+We also have smart Annotations. You can highlight any text in the report to instantly ask the agent for clarification.
+
+We use Gemini 3.0 Flash for our Voice-to-Text feature. It instantly converts speech into actionable queries.
+
+Finally, our Visual Analysis. I'm uploading a screenshot of the Mercedes-Nvidia partnership news.
+
+The agent analyzes the image pixel-by-pixel, understands the context, and gives you a specific breakdown of how this partnership impacts the stock.
+
+That's EquityPulse. Thank you for watching, and please check out the detailed architecture diagrams in our README file!

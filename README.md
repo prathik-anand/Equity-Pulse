@@ -84,27 +84,13 @@ The *Portfolio Manager* node takes the conflicting reports (e.g., "Quant says SE
 
 ## ⚡ Getting Started
 
-### Prerequisites
-*   Python 3.11+
-*   Node.js 18+
-*   Google Gemini API Key
+For detailed installation, configuration, and testing instructions, please refer to **[SETUP.md](SETUP.md)**.
 
-### Backend Setup
-```bash
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install uv && uv sync
-cp .env.example .env  # Add your GOOGLE_API_KEY
-uvicorn app.main:app --reload
-```
-
-### Frontend Setup
-```bash
-cd frontend
-npm install
-npm run dev
-```
+It includes:
+*   Supabase & Database Setup
+*   Environment Configuration (Gemini 3.0 Preview)
+*   Docker & Langfuse Setup (Optional)
+*   Running the Application
 
 ## 📜 License
 MIT License.
