@@ -187,11 +187,16 @@ def create_structured_node(tools: List[Any], system_prompt: str, schema: Any):
                         msg_str = text.strip()
                         if (msg_str.startswith("[") and ("type" in msg_str or "text" in msg_str)) or msg_str.startswith("{"):
                             try:
-                                data = ast.literal_eval(msg_str)
+                                try:
+                                    data = ast.literal_eval(msg_str)
+                                except (ValueError, SyntaxError):
+                                    import json
+                                    data = json.loads(msg_str)
+                                    
                                 if isinstance(data, list):
-                                    text = "".join([d.get("text", "") for d in data if isinstance(d, dict) and "text" in d])
+                                    text = "".join([d.get("text", d.get("reasoning", "")) for d in data if isinstance(d, dict)])
                                 elif isinstance(data, dict):
-                                    text = data.get("text", "")
+                                    text = data.get("reasoning", data.get("text", ""))
                             except:
                                 pass
 

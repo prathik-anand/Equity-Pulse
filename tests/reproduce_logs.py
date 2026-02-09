@@ -33,6 +33,9 @@ async def reproduce():
 
     # Simulate how agent_factory logs thoughts
     logger.log_thought(json_content)
+    
+    # Wait for the async task to complete
+    await asyncio.sleep(0.1)
 
     # Check what's stored in stream_manager
     logs = stream_manager.get_logs(session_id)

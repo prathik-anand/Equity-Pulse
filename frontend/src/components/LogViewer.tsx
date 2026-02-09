@@ -149,21 +149,30 @@ const ReasoningStep: React.FC<{ log: LogEntry }> = ({ log }) => {
                                         remarkPlugins={[remarkGfm]}
                                     >
                                         {(() => {
-                                            if (log.agent === 'Fundamental Analyst' && typeof log.content === 'string') {
-                                                try {
-                                                    // Optimization: check if it looks like JSON before parsing
-                                                    const trimmed = log.content.trim();
-                                                    if (trimmed.startsWith('{')) {
+                                            const content = log.content;
+                                            
+                                            // 1. If content is already an object
+                                            if (typeof content === 'object' && content !== null) {
+                                                if ((content as any).reasoning) return (content as any).reasoning;
+                                                return JSON.stringify(content, null, 2);
+                                            }
+
+                                            // 2. If content is a string that looks like JSON
+                                            if (typeof content === 'string') {
+                                                const trimmed = content.trim();
+                                                if (trimmed.startsWith('{')) {
+                                                    try {
                                                         const parsed = JSON.parse(trimmed);
                                                         if (parsed.reasoning) {
                                                             return parsed.reasoning;
                                                         }
+                                                    } catch (e) {
+                                                        // Fallback to raw content
                                                     }
-                                                } catch (e) {
-                                                    // Fallback to raw content on error
                                                 }
                                             }
-                                            return log.content;
+
+                                            return content;
                                         })()}
                                     </ReactMarkdown>
                                 </div>
