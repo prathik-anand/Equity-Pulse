@@ -3,9 +3,10 @@ from enum import IntEnum
 import logging
 import os
 import asyncio
-import json
+from typing import Union
 from langfuse import Langfuse
 from app.core.log_stream import stream_manager
+
 
 class LogLevel(IntEnum):
     DEBUG = 10
@@ -13,17 +14,20 @@ class LogLevel(IntEnum):
     WARNING = 30
     ERROR = 40
 
+
 class AgentLogger:
     _langfuse = None
 
-    def __init__(self, agent_name: str, level: int = LogLevel.INFO, session_id: str = None):
+    def __init__(
+        self, agent_name: str, level: int = LogLevel.INFO, session_id: str = None
+    ):
         self.agent_name = agent_name
         self.level = level
         self.session_id = session_id
         self.logs = []
         # Get standard python logger
         self.sys_logger = logging.getLogger(f"agent.{agent_name}")
-        
+
         # Try to capture the event loop
         try:
             self.loop = asyncio.get_running_loop()
@@ -35,22 +39,24 @@ class AgentLogger:
             public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
             secret_key = os.getenv("LANGFUSE_SECRET_KEY")
             host = os.getenv("LANGFUSE_HOST", "http://localhost:3000")
-            
+
             if public_key and secret_key:
                 AgentLogger._langfuse = Langfuse(
-                    public_key=public_key,
-                    secret_key=secret_key,
-                    host=host
+                    public_key=public_key, secret_key=secret_key, host=host
                 )
             else:
-                self.sys_logger.warning("Langfuse credentials not found. Observability will be disabled.")
+                self.sys_logger.warning(
+                    "Langfuse credentials not found. Observability will be disabled."
+                )
 
-    async def stream_event(self, event_type: str, content: str, payload: dict = None):
+    async def stream_event(
+        self, event_type: str, content: Union[str, dict], payload: dict = None
+    ):
         """
         Directly streams a structured event to the frontend and Langfuse.
         """
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
+
         # 1. Prepare Payload
         full_payload = {
             "type": event_type,
@@ -58,21 +64,21 @@ class AgentLogger:
             "agent": self.agent_name,
             "content": content,
             # Merge additional details
-            **(payload or {})
+            **(payload or {}),
         }
-        
+
         # Also append to local memory for legacy compatibility
-        # We serialize it to JSON string so it survives passing around in state
-        json_str = json.dumps(full_payload)
-        self.logs.append(json_str)
+        # We store it as a dict now to avoid double-encoding
+        self.logs.append(full_payload)
 
         if not self.session_id:
             return
 
         # 2. Broadcast to Frontend
-        coro = stream_manager.broadcast(self.session_id, json_str)
+        # We broadcast the dict directly; the stream manager will handle serialization if needed for SSE
+        coro = stream_manager.broadcast(self.session_id, full_payload)
         try:
-             # Try using the captured loop if it matches the current context or if we are in a thread
+            # Try using the captured loop if it matches the current context or if we are in a thread
             if self.loop and self.loop.is_running():
                 try:
                     # if we are in the loop, create_task
@@ -82,11 +88,11 @@ class AgentLogger:
                         # we are in another thread, allow threadsafe
                         asyncio.run_coroutine_threadsafe(coro, self.loop)
                 except RuntimeError:
-                        # in a thread with no loop, use threadsafe
-                        asyncio.run_coroutine_threadsafe(coro, self.loop)
+                    # in a thread with no loop, use threadsafe
+                    asyncio.run_coroutine_threadsafe(coro, self.loop)
             else:
-                    # Fallback
-                    asyncio.get_running_loop().create_task(coro)
+                # Fallback
+                asyncio.get_running_loop().create_task(coro)
         except Exception:
             pass
 
@@ -96,14 +102,13 @@ class AgentLogger:
                 sanitized_trace_id = self.session_id.replace("-", "")
                 # Use trace() then event() for SDK v2.x compatibility
                 trace = AgentLogger._langfuse.trace(
-                    id=sanitized_trace_id,
-                    name=f"session-{self.session_id[:8]}"
+                    id=sanitized_trace_id, name=f"session-{self.session_id[:8]}"
                 )
                 trace.event(
                     name=f"{self.agent_name}-{event_type}",
                     level="DEFAULT",
                     metadata=full_payload,
-                    input=content
+                    input=content,
                 )
             except Exception as e:
                 self.sys_logger.error(f"Langfuse error: {e}")
@@ -115,15 +120,18 @@ class AgentLogger:
         msg = f"Using {tool_name}..."
         if self.loop:
             asyncio.run_coroutine_threadsafe(
-                self.stream_event("tool", msg, {"tool_name": tool_name, "args": args, "status": "start"}), 
-                self.loop
+                self.stream_event(
+                    "tool",
+                    msg,
+                    {"tool_name": tool_name, "args": args, "status": "start"},
+                ),
+                self.loop,
             )
 
     def log_thought(self, thought_text: str):
         if self.loop:
             asyncio.run_coroutine_threadsafe(
-                self.stream_event("thought", thought_text), 
-                self.loop
+                self.stream_event("thought", thought_text), self.loop
             )
 
     def _log(self, level_name: str, level_val: int, message: str):
@@ -132,18 +140,16 @@ class AgentLogger:
         if level_val >= self.level:
             # Check if this is arguably a lifecycle event
             if "Activated" in message or "Analysis Completed" in message:
-                 if self.loop:
+                if self.loop:
                     asyncio.run_coroutine_threadsafe(
-                        self.stream_event("lifecycle", message),
-                        self.loop
+                        self.stream_event("lifecycle", message), self.loop
                     )
             elif "Starting analysis" in message:
                 if self.loop:
                     asyncio.run_coroutine_threadsafe(
-                        self.stream_event("info", message),
-                        self.loop
+                        self.stream_event("info", message), self.loop
                     )
-            
+
             # Emit to Console always
             self.sys_logger.log(level_val, message)
 
@@ -159,6 +165,7 @@ class AgentLogger:
     def error(self, message: str, exc: Exception = None):
         if exc:
             import traceback
+
             tb_lines = traceback.format_exception(type(exc), exc, exc.__traceback__)
             # Get the last meaningful line of code context if possible
             message = f"{message} | {exc} | Trace: {tb_lines[-1].strip()}"
@@ -166,4 +173,3 @@ class AgentLogger:
 
     def get_logs(self):
         return self.logs
-

@@ -22,7 +22,23 @@ interface LogEntry {
     message: string;
     content: string;
     args?: any;
+    tool_name?: string;
 }
+
+const TOOL_TITLES: Record<string, string> = {
+    'search_web': 'Web Search',
+    'get_company_news': 'News Search',
+    'search_market_trends': 'Market Trends',
+    'get_financials': 'Financial Data',
+    'get_price_history_stats': 'Price History',
+    'param_extractor': 'Parameter Extraction',
+    'search_governance_issues': 'Governance Check',
+    'read_report': 'Reading Report',
+    'get_stock_price': 'Stock Price',
+    'tavily_search_results_json': 'Web Search (Tavily)',
+    'google_finance': 'Google Finance',
+    'yahoo_finance': 'Yahoo Finance'
+};
 
 interface LogViewerProps {
     sessionId: string;
@@ -48,6 +64,16 @@ const formatToolInput = (args: any): string => {
     } catch (e) {
         return JSON.stringify(args);
     }
+};
+
+const formatToolName = (name: string): string => {
+    if (TOOL_TITLES[name]) return TOOL_TITLES[name];
+
+    // Generic fallback: "get_valuation_ratio" -> "Get Valuation Ratio"
+    return name
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
 };
 
 const ReasoningStep: React.FC<{ log: LogEntry }> = ({ log }) => {
@@ -91,7 +117,7 @@ const ReasoningStep: React.FC<{ log: LogEntry }> = ({ log }) => {
                                 isTool ? "text-blue-200" :
                                     isError ? "text-red-200" : "text-gray-400"
                         )}>
-                            {isTool && log.content.includes("Using") ? formatToolInput(log.args) || log.content : log.content.split('\n')[0]}
+                            [{log.agent}] {isTool && log.tool_name ? formatToolName(log.tool_name) : log.type.charAt(0).toUpperCase() + log.type.slice(1)}
                         </span>
                         <div className="flex items-center gap-2 text-[10px] text-white/30 whitespace-nowrap">
                             <Clock className="w-3 h-3" />
@@ -161,7 +187,8 @@ const LogViewer: React.FC<LogViewerProps> = ({ sessionId, initialLogs = [], isPr
             timestamp: new Date().toLocaleTimeString(),
             agent: "System",
             message: logStr,
-            content: logStr.replace("Insight:", "").replace("Tool Usage:", "").trim() || logStr
+            content: logStr.replace("Insight:", "").replace("Tool Usage:", "").trim() || logStr,
+            tool_name: (logItem as any).tool_name
         };
     };
 

@@ -2,6 +2,8 @@ import asyncio
 from typing import AsyncGenerator
 from collections import defaultdict
 import logging
+import json
+
 
 class LogStreamManager:
     _instance = None
@@ -14,14 +16,14 @@ class LogStreamManager:
             cls._instance.logger = logging.getLogger("LogStreamManager")
         return cls._instance
 
-    async def broadcast(self, session_id: str, message: str):
+    async def broadcast(self, session_id: str, message: str | dict):
         """
         Push a message to all active queues for the given session_id.
         Also store the message in log_history for later retrieval.
         """
         # Store in history
         self.log_history[session_id].append(message)
-        
+
         if session_id in self.active_streams:
             # We copy the list to avoid modification issues during iteration if a client disconnects
             # though disconnect usually happens in the get_stream loop.
@@ -30,7 +32,9 @@ class LogStreamManager:
                 try:
                     await q.put(message)
                 except Exception as e:
-                    self.logger.error(f"Failed to put message in queue for session {session_id}: {e}")
+                    self.logger.error(
+                        f"Failed to put message in queue for session {session_id}: {e}"
+                    )
 
     def get_logs(self, session_id: str) -> list:
         """
@@ -51,14 +55,18 @@ class LogStreamManager:
         """
         queue = asyncio.Queue()
         self.active_streams[session_id].append(queue)
-        
+
         try:
             while True:
                 message = await queue.get()
                 # Server-Sent Events format: "data: <content>\n\n"
-                # We assume message is a simple string for now.
-                # If we want JSON, we should json.dumps it before.
-                yield f"data: {message}\n\n"
+
+                if isinstance(message, dict):
+                    data = json.dumps(message)
+                else:
+                    data = str(message)
+
+                yield f"data: {data}\n\n"
                 queue.task_done()
         except asyncio.CancelledError:
             self.logger.info(f"Stream cancelled for session {session_id}")
@@ -70,5 +78,6 @@ class LogStreamManager:
                         del self.active_streams[session_id]
                 except ValueError:
                     pass
+
 
 stream_manager = LogStreamManager()
