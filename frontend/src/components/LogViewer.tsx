@@ -148,7 +148,23 @@ const ReasoningStep: React.FC<{ log: LogEntry }> = ({ log }) => {
                                     <ReactMarkdown
                                         remarkPlugins={[remarkGfm]}
                                     >
-                                        {log.content}
+                                        {(() => {
+                                            if (log.agent === 'Fundamental Analyst' && typeof log.content === 'string') {
+                                                try {
+                                                    // Optimization: check if it looks like JSON before parsing
+                                                    const trimmed = log.content.trim();
+                                                    if (trimmed.startsWith('{')) {
+                                                        const parsed = JSON.parse(trimmed);
+                                                        if (parsed.reasoning) {
+                                                            return parsed.reasoning;
+                                                        }
+                                                    }
+                                                } catch (e) {
+                                                    // Fallback to raw content on error
+                                                }
+                                            }
+                                            return log.content;
+                                        })()}
                                     </ReactMarkdown>
                                 </div>
                             )}

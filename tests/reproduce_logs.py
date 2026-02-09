@@ -18,13 +18,21 @@ from app.graph.logger import AgentLogger
 
 async def reproduce():
     session_id = "test_session"
-    agent_name = "TestAgent"
-
+    agent_name = "Fundamental Analyst"
     logger = AgentLogger(agent_name, session_id=session_id)
 
     print(f"--- Simulating Log Event ---")
-    # Simulate a log event
-    await logger.stream_event("info", "Test message", {"foo": "bar"})
+    # Simulate a "Thought" log from Fundamental Analyst (which outputs JSON string)
+    json_content = json.dumps(
+        {
+            "ticker": "NVDA",
+            "intrinsic_value_details": {"pe_ratio": 45.89},
+            "reasoning": "MOAT STATUS: Wide based on ROIC > 100%.",
+        }
+    )
+
+    # Simulate how agent_factory logs thoughts
+    logger.log_thought(json_content)
 
     # Check what's stored in stream_manager
     logs = stream_manager.get_logs(session_id)

@@ -162,17 +162,58 @@ const ToolOutputRenderer: React.FC<ToolOutputRendererProps> = ({ data, toolName 
 
     if (!parsedData) return <span className="text-zinc-500 italic text-xs">No output</span>;
 
-    // --- 1. Web Search ---
-    if (['web_search', 'search_market_trends', 'search_governance_issues'].includes(toolName || '')) {
+    // --- 1. Web Search & Parallel Search ---
+    if (['web_search', 'search_market_trends', 'search_governance_issues', 'parallel_search_market_trends'].includes(toolName || '')) {
+        let contentToRender = typeof parsedData === 'string' ? parsedData : JSON.stringify(parsedData, null, 2);
+        let query = '';
+
+        // Specific handling for Parallel Search Results which come as a prefixed string
+        if (typeof data === 'string') {
+            // Robustly try to find the JSON part
+            const match = data.match(/Parallel Search Results:\s*(\{[\s\S]*\})/);
+            if (match && match[1]) {
+                try {
+                    const parsed = JSON.parse(match[1]);
+                    if (parsed.results) {
+                        contentToRender = parsed.results;
+                        query = parsed.query;
+                    }
+                } catch (e) {
+                    // console.error("Failed to parse parallel search results", e);
+                }
+            } else if (data.trim().startsWith('{')) {
+                // Maybe the prefix is missing but it's just JSON?
+                try {
+                    const parsed = JSON.parse(data);
+                    if (parsed.results && parsed.query && toolName === 'parallel_search_market_trends') {
+                        contentToRender = parsed.results;
+                        query = parsed.query;
+                    }
+                } catch (e) { }
+            }
+        }
+        // Handle object format if it was already parsed (e.g. from DB hydration)
+        else if (toolName === 'parallel_search_market_trends' && parsedData.results) {
+            contentToRender = parsedData.results;
+            query = parsedData.query;
+        }
+
         return (
             <div className="space-y-1.5 mt-0.5">
                 <div className="flex items-center gap-2 text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">
                     <Search className="w-3 h-3" />
                     <span>Search Results</span>
                 </div>
-                <div className="text-sm text-zinc-500 prose prose-invert prose-sm max-w-none bg-black/20 p-2 rounded-md border border-white/5">
+
+                {query && (
+                    <div className="text-xs text-zinc-400 italic mb-1 border-l-2 border-zinc-700 pl-2">
+                        Query: "{query}"
+                    </div>
+                )}
+
+                <div className="text-xs text-zinc-400 prose prose-invert max-w-none bg-black/20 p-3 rounded-md border border-white/5 [&_h1]:text-sm [&_h1]:font-medium [&_h1]:text-zinc-200 [&_h2]:text-sm [&_h2]:font-medium [&_h2]:text-zinc-200 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-zinc-200 [&_p]:leading-relaxed [&_li]:leading-relaxed">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {typeof parsedData === 'string' ? parsedData : JSON.stringify(parsedData, null, 2)}
+                        {contentToRender}
                     </ReactMarkdown>
                 </div>
             </div>

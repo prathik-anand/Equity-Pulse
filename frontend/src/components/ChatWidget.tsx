@@ -177,12 +177,12 @@ const FormatThought: React.FC<{ step: ThoughtStep }> = ({ step }) => {
                         <span className="w-1.5 h-1.5 rounded-full bg-blue-500/50"></span>
                         Visual Analysis
                     </div>
-                    <div className="pl-3 border-l border-white/10 ml-1 leading-relaxed prose prose-invert prose-sm max-w-none text-zinc-200 [&_strong]:text-white [&_p]:my-1.5">
+                    <div className="pl-3 border-l border-white/10 ml-1 leading-relaxed text-xs prose prose-invert max-w-none text-zinc-400 [&_p]:my-1.5 [&_h1]:text-sm [&_h1]:font-medium [&_h1]:text-zinc-200 [&_h2]:text-sm [&_h2]:font-medium [&_h2]:text-zinc-200 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-zinc-200">
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
                             components={{
                                 p: ({ node, ...props }) => <p className="leading-relaxed mb-2 last:mb-0" {...props} />,
-                                strong: ({ node, ...props }) => <strong className="font-bold text-white" {...props} />,
+                                strong: ({ node, ...props }) => <span className="font-normal text-zinc-400" {...props} />,
                             }}
                         >
                             {typeof parsed === 'string' ? parsed : (parsed.content || step.content)}
@@ -973,7 +973,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ sessionId: initialSessio
 
                             {/* Assistant Body Section (Full Width, below User) */}
                             {turn.assistant ? (
-                                <div className="w-full pl-0 md:pl-2">
+                                <div className="w-[90%] pl-0 md:pl-2">
                                     {/* Header & Reasoning */}
                                     {turn.assistant.thoughts && turn.assistant.thoughts.length > 0 ? (
                                         <ThinkingAccordion
